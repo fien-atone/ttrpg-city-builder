@@ -35,13 +35,15 @@ export const geologyContribute: Contribute = (lev, world, snap) => {
 
   let mining = 0;
   for (const r of geo.resources) mining += extractability(r);
-  // mining only matters while the reserve holds out
+  // mining only matters while the reserve holds out — and a deposit is an
+  // OPPORTUNITY: the boom-town draw only exists once someone here can mine
   const reserveLeft = Number.isFinite(snap.reserves) ? snap.reserves > 0 : true;
   if (mining > 0 && reserveLeft) {
-    lev.sectorWeights.mining += mining * 1.4;
-    lev.sectorWeights.crafts += mining * 0.4;
-    lev.migrationPull += mining * 0.25; // boom-town draw
-    if (mining >= 6) lev.flags.add('rich_deposit');
+    const knowHow = snap.capabilities.mining;
+    lev.sectorWeights.mining += mining * 4.2;
+    lev.sectorWeights.crafts += mining * 0.6 * knowHow;
+    lev.migrationPull += mining * 0.25 * (0.1 + 0.9 * knowHow);
+    if (mining >= 6 && knowHow > 0.3) lev.flags.add('rich_deposit');
   }
   if (geo.stability <= 2) lev.flags.add('unstable_ground');
 };
@@ -54,5 +56,5 @@ export function initialReserve(geo: Geology, baseK: number): number {
     mining += r.volume;
   }
   if (mining <= 0) return Infinity;
-  return baseK * mining * 1.4;
+  return baseK * mining * 10;
 }

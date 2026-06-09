@@ -32,7 +32,9 @@ export function ConfigPanel({ config, dispatch }: Props) {
     dispatch({ type: 'applyPreset', domain, presetId });
 
   const randomizeFounders = () => {
+    const bgs = ['farmers', 'soldiers', 'miners', 'merchants', 'clergy', 'scholars', 'mixed'];
     set('founders.count', 5 * d(60, 2));
+    set('founders.background', bgs[d(bgs.length) - 1]);
     set('founders.health', d(5));
     set('founders.dependentsPct', 5 * d(11, 1));
     set('founders.skill', d(5));
@@ -79,6 +81,7 @@ export function ConfigPanel({ config, dispatch }: Props) {
       <DomainSection title={t('domains.founders')} presetOptions={presetOpts('founders')} onPreset={onPreset('founders')} defaultOpen>
         <RangeField label={t('fields.count')} value={config.founders.count} min={5} max={500} step={5} onChange={(v) => set('founders.count', v)} />
         <SelectField label={t('fields.species')} value={config.founders.species} options={opts('species', ['human', 'elf', 'dwarf', 'halfling', 'orc'])} onChange={(v) => set('founders.species', v)} />
+        <SelectField label={t('fields.background')} value={config.founders.background} options={opts('background', ['farmers', 'soldiers', 'miners', 'merchants', 'clergy', 'scholars', 'mixed'])} onChange={(v) => set('founders.background', v)} />
         <RangeField label={t('fields.health')} value={config.founders.health} min={1} max={5} labels={scale('scales.health')} hint={t('hints.health')} onChange={(v) => set('founders.health', v)} />
         <RangeField label={t('fields.dependentsPct')} value={config.founders.dependentsPct} min={0} max={60} suffix="%" hint={t('hints.dependentsPct')} onChange={(v) => set('founders.dependentsPct', v)} />
         <NumberField label={t('fields.medianAge')} value={config.founders.medianAge} min={10} onChange={(v) => set('founders.medianAge', v)} />

@@ -84,6 +84,7 @@ export function deriveCensus(point: YearState, world: WorldConfig): Census {
     reserves: Infinity,
     development: point.development,
     prosperity: point.prosperity,
+    capabilities: point.capabilities,
   });
 
   const dependents = point.composition.dependents;

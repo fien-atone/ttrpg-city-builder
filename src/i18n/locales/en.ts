@@ -49,6 +49,7 @@ export const en = {
     growingSeason: 'Warm season',
     count: 'Founder count',
     species: 'Species',
+    background: 'Founders’ background',
     health: 'Colonist hardiness',
     dependentsPct: 'Dependents (non-working)',
     medianAge: 'Median age',
@@ -124,6 +125,15 @@ export const en = {
     timber: 'Timber',
   },
   species: { human: 'Humans', elf: 'Elves', dwarf: 'Dwarves', halfling: 'Halflings', orc: 'Orcs' },
+  background: {
+    farmers: 'Farming families',
+    soldiers: 'Garrison veterans',
+    miners: 'Mining clans',
+    merchants: 'Merchant families',
+    clergy: 'The faithful',
+    scholars: 'Scholars',
+    mixed: 'A mixed crowd',
+  },
   neighborType: { hamlet: 'Hamlet', town: 'Town', city: 'City', capital: 'Capital', fort: 'Fort', port: 'Port' },
   relation: { allied: 'Allied', friendly: 'Friendly', neutral: 'Neutral', rival: 'Rival', hostile: 'Hostile' },
   sovereignty: {
@@ -218,6 +228,7 @@ export const en = {
     fire: 'Fire',
     exhausted: 'Resource exhausted',
     collapse: 'Settlement abandoned',
+    arrival: 'Skilled newcomers',
   },
   cards: {
     population: 'Population',
@@ -249,6 +260,7 @@ export const en = {
     ha: 'ha',
     professionsTitle: 'Trades & callings',
     workforce: 'Working adults',
+    capabilitiesTitle: 'Know-how',
   },
   foodChannel: {
     crops: 'Crops',

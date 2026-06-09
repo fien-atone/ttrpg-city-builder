@@ -52,6 +52,7 @@ export const ru: Messages = {
     growingSeason: 'Тёплый сезон',
     count: 'Число основателей',
     species: 'Вид',
+    background: 'Происхождение основателей',
     health: 'Выносливость колонистов',
     dependentsPct: 'Иждивенцы (неработающие)',
     medianAge: 'Медианный возраст',
@@ -127,6 +128,15 @@ export const ru: Messages = {
     timber: 'Лес (древесина)',
   },
   species: { human: 'Люди', elf: 'Эльфы', dwarf: 'Гномы', halfling: 'Полурослики', orc: 'Орки' },
+  background: {
+    farmers: 'Земледельческие семьи',
+    soldiers: 'Ветераны гарнизона',
+    miners: 'Горняцкие кланы',
+    merchants: 'Купеческие семьи',
+    clergy: 'Верующие',
+    scholars: 'Учёные',
+    mixed: 'Разношёрстный люд',
+  },
   neighborType: { hamlet: 'Деревушка', town: 'Городок', city: 'Город', capital: 'Столица', fort: 'Форт', port: 'Порт' },
   relation: { allied: 'Союзник', friendly: 'Дружеств.', neutral: 'Нейтрал.', rival: 'Соперник', hostile: 'Враждебн.' },
   sovereignty: {
@@ -221,6 +231,7 @@ export const ru: Messages = {
     fire: 'Пожар',
     exhausted: 'Ресурс исчерпан',
     collapse: 'Поселение покинуто',
+    arrival: 'Прибыли умельцы',
   },
   cards: {
     population: 'Население',
@@ -252,6 +263,7 @@ export const ru: Messages = {
     ha: 'га',
     professionsTitle: 'Ремёсла и занятия',
     workforce: 'Работоспособных',
+    capabilitiesTitle: 'Умения поселения',
   },
   foodChannel: {
     crops: 'Посевы',

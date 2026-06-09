@@ -4,7 +4,14 @@
 // ───────────────────────── shared id unions ─────────────────────────
 export type BuildingTag = 'plain' | 'magic' | 'tech';
 export type PhaseId = 'camp' | 'hamlet' | 'village' | 'town' | 'city';
-export type EventKind = 'plague' | 'famine' | 'raid' | 'fire' | 'exhausted' | 'collapse';
+export type EventKind =
+  | 'plague'
+  | 'famine'
+  | 'raid'
+  | 'fire'
+  | 'exhausted'
+  | 'collapse'
+  | 'arrival'; // skilled newcomers unlock a dormant opportunity
 
 export type Sector =
   | 'farming'
@@ -72,13 +79,23 @@ export interface Climate {
 }
 
 export type SpeciesId = 'human' | 'elf' | 'dwarf' | 'halfling' | 'orc';
+/** Who the founders were before they came — sets what the settlement KNOWS how to do. */
+export type FounderBackground =
+  | 'farmers'
+  | 'soldiers'
+  | 'miners'
+  | 'merchants'
+  | 'clergy'
+  | 'scholars'
+  | 'mixed';
 export interface Founders {
   count: number;
   species: SpeciesId;
+  background: FounderBackground;
   health: number; // 1..5
   dependentsPct: number; // 0..60 — children/elderly share at founding
   medianAge: number; // years
-  skill: number; // 1..5 — share of useful trades/professions
+  skill: number; // 1..5 — depth of expertise within the background
 }
 
 export interface Wildlife {
@@ -209,6 +226,7 @@ export interface StateSnapshot {
   reserves: number; // remaining resource reserve (Infinity if none)
   development: number; // 0..1 accumulated infrastructure stock
   prosperity: number; // 0..2 economic output per capita
+  capabilities: Record<Sector, number>; // 0..1 — what the settlement knows how to do
 }
 
 /** A domain's contribution: mutate the lever accumulator from its config slice. */
@@ -245,6 +263,7 @@ export interface SimEvent {
   year: number;
   kind: EventKind;
   severity: number; // 0..1 fraction lost (0 for non-population events)
+  sector?: Sector; // for 'arrival': which know-how the newcomers brought
 }
 
 export interface YearState {
@@ -258,6 +277,7 @@ export interface YearState {
   funding: number;
   development: number; // 0..1 infrastructure stock
   prosperity: number; // 0..2 output per capita
+  capabilities: Record<Sector, number>; // 0..1 know-how per sector
   buildings: BuildingState[];
   composition: Composition;
   sectors: Record<Sector, number>; // normalized shares summing to 1

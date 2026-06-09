@@ -1,4 +1,6 @@
 import type { Census } from '../domain/census';
+import type { Sector, YearState } from '../domain/types';
+import { SECTOR_COLORS } from '../lib/ui';
 import { useI18n } from '../i18n/I18nContext';
 
 const CHANNEL_COLORS: Record<string, string> = {
@@ -10,7 +12,9 @@ const CHANNEL_COLORS: Record<string, string> = {
   magic: '#b07ae0',
 };
 
-export function CensusPanel({ census }: { census: Census }) {
+const SHOWN_CAPS: Sector[] = ['mining', 'trade', 'crafts', 'clergy', 'knowledge', 'military'];
+
+export function CensusPanel({ census, point }: { census: Census; point: YearState }) {
   const { t, fmt } = useI18n();
   const f = census.food;
 
@@ -78,6 +82,24 @@ export function CensusPanel({ census }: { census: Census }) {
       </div>
       <div className="hint" style={{ marginTop: 6 }}>
         {t('census.workforce')}: {fmt(census.workforce)}
+      </div>
+
+      <h2>{t('census.capabilitiesTitle')}</h2>
+      <div className="bars">
+        {SHOWN_CAPS.map((s) => {
+          const v = point.capabilities[s];
+          return (
+            <div className="bar" key={s}>
+              <div className="bl">
+                <span>{t(`sectors.${s}`)}</span>
+                <span>{Math.round(v * 100)}%</span>
+              </div>
+              <div className="track">
+                <div className="fill" style={{ width: `${Math.round(v * 100)}%`, background: SECTOR_COLORS[s] }} />
+              </div>
+            </div>
+          );
+        })}
       </div>
     </div>
   );

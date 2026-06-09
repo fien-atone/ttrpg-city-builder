@@ -16,7 +16,7 @@ import { phaseOf } from './phases';
 import { mulberry32 } from './rng';
 import { applySchedule } from './trajectory';
 import { initialReserve } from './config/geology';
-import { viabilityFloor } from './config/founders';
+import { viabilityFloor, initialCapabilities } from './config/founders';
 import { derivedHarshness } from './config/climate';
 import { fundingAt } from './config/support';
 import { deriveDesignation } from './designation';
@@ -35,6 +35,25 @@ const SECTOR_VALUE: Record<Sector, number> = {
   clergy: 0.8,
   knowledge: 1.4,
 };
+
+/**
+ * How hard a sector is gated by know-how: anyone can subsist-farm or raise a
+ * militia (high floor), but without miners/merchants/priests the opportunity
+ * stays dormant (low floor). effective = opportunity × (floor + (1−floor)·cap).
+ */
+const GATE_FLOOR: Record<Sector, number> = {
+  farming: 0.45,
+  services: 0.3,
+  military: 0.35,
+  crafts: 0.12,
+  trade: 0.08,
+  mining: 0.05,
+  clergy: 0.08,
+  knowledge: 0.05,
+};
+
+/** Sectors whose know-how can arrive with skilled newcomers. */
+const SPECIALIST_SECTORS: Sector[] = ['mining', 'trade', 'crafts', 'clergy', 'knowledge'];
 
 /**
  * Pure, deterministic per-year evolution. Same config → same result.
@@ -56,12 +75,17 @@ export function simulate(world: WorldConfig): SimResult {
   const floor = viabilityFloor(world.founders);
 
   // baseline capacity (year 0) to size the resource reserve
+  // capabilities: what the settlement KNOWS how to do — set by who the
+  // founders were, grown by practice, jumped by skilled newcomers
+  const capabilities = initialCapabilities(world.founders, world.mission.goal);
+
   const baseSnap = {
     year: 0,
     population: world.founders.count,
     reserves: Infinity,
     development: 0,
     prosperity: 0,
+    capabilities,
   };
   const baseK = capacityFrom(buildLevers(world, baseSnap));
   let reserves = initialReserve(world.geology, baseK);
@@ -75,6 +99,7 @@ export function simulate(world: WorldConfig): SimResult {
   // stocks: a sponsored expedition arrives with some infrastructure
   let development = clamp(0.08 + world.support.investment * 0.05, 0, 0.45);
   let prosperity = 0.5;
+  let prevMiningShare = 0;
 
   const everFunded = fundingAt(world.support, 0) > 0;
 
@@ -96,15 +121,16 @@ export function simulate(world: WorldConfig): SimResult {
       reserves,
       development,
       prosperity,
+      capabilities,
     });
 
     // ---- carrying capacity: levers × infrastructure × age structure ----
     const workPenalty = clamp(1 - Math.max(0, dependentFrac - 0.32) * 1.4, 0.55, 1);
     let K = capacityFrom(lev) * (0.75 + 0.45 * development) * (0.85 + 0.15 * workPenalty);
 
-    // ---- resource depletion: a mining draw fades as the seam runs out ----
+    // ---- resource depletion: the seam only depletes if someone MINES it ----
     if (Number.isFinite(reserves)) {
-      reserves -= pop * 0.9;
+      reserves -= pop * 4 * prevMiningShare;
       if (reserves <= 0 && !reserveExhausted) {
         reserveExhausted = true;
         events.push({ year: y, kind: 'exhausted', severity: 0 });
@@ -115,12 +141,23 @@ export function simulate(world: WorldConfig): SimResult {
       }
     }
 
-    // ---- economy: sector mix → prosperity (output per capita) ----
-    const w = { ...lev.sectorWeights };
+    // ---- economy: opportunity × know-how → actual sector mix ----
+    const opp = { ...lev.sectorWeights };
     const urban = Math.log10(Math.max(10, pop));
-    w.services += urban * 2;
-    w.crafts += urban * 1.5;
-    const sectors = normalizeSectors(w);
+    opp.services += urban * 2;
+    opp.crafts += urban * 1.5;
+    const eff = {} as Record<Sector, number>;
+    for (const s of Object.keys(opp) as Sector[]) {
+      const gate = GATE_FLOOR[s] + (1 - GATE_FLOOR[s]) * capabilities[s];
+      eff[s] = opp[s] * gate;
+    }
+    const sectors = normalizeSectors(eff);
+    prevMiningShare = sectors.mining;
+
+    // learning by doing: working a sector slowly deepens its know-how
+    for (const s of Object.keys(sectors) as Sector[]) {
+      capabilities[s] = clamp(capabilities[s] + 0.03 * sectors[s] * (1 - capabilities[s]), 0, 0.98);
+    }
 
     let econValue = 0;
     for (const s of Object.keys(sectors) as Sector[]) econValue += sectors[s] * SECTOR_VALUE[s];
@@ -146,6 +183,39 @@ export function simulate(world: WorldConfig): SimResult {
     const inMig = pop * 0.016 * pull * room * workPenalty + lev.migrationPull * 1.2 * room;
     const outMig = lev.migrationPush * 0.002 * pop + (pop > K ? 0.06 * (pop - K) : 0);
     const migration = inMig - outMig;
+
+    // ---- skilled newcomers: chance scales with how much the world passes
+    // through; they unlock the most tempting DORMANT opportunity ----
+    if (!collapsed && pop >= 25 && y >= 3) {
+      const pArrival = clamp(0.004 + (inMig / Math.max(pop, 1)) * 0.15 + lev.transientFlow * 0.06, 0, 0.025);
+      if (rand() < pArrival) {
+        // hidden seams are harder to stumble upon than an obvious trade spot
+        const access =
+          worldY.geology.resources.length > 0
+            ? worldY.geology.resources.reduce((a, r) => a + r.accessibility, 0) /
+              (worldY.geology.resources.length * 5)
+            : 0;
+        let total = 0;
+        const weights = SPECIALIST_SECTORS.map((s) => {
+          let wgt = opp[s] * (1 - capabilities[s]);
+          if (s === 'mining') wgt *= access;
+          total += wgt;
+          return wgt;
+        });
+        if (total > 1.5) {
+          let pick = rand() * total;
+          for (let i = 0; i < SPECIALIST_SECTORS.length; i++) {
+            pick -= weights[i];
+            if (pick <= 0) {
+              const s = SPECIALIST_SECTORS[i];
+              capabilities[s] = clamp(capabilities[s] + 0.3 * (1 - capabilities[s]), 0, 0.98);
+              events.push({ year: y, kind: 'arrival', severity: 0, sector: s });
+              break;
+            }
+          }
+        }
+      }
+    }
 
     // overshoot famine: population above what the land feeds dies back
     const overshootLoss = pop > K * 1.05 ? (pop - K) * 0.25 : 0;
@@ -295,6 +365,7 @@ export function simulate(world: WorldConfig): SimResult {
       funding: lev.funding,
       development,
       prosperity,
+      capabilities: { ...capabilities },
       buildings,
       composition: { locals: localsStock, migrants: migrantsStock, transients, dependents },
       sectors,

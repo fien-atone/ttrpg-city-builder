@@ -89,7 +89,7 @@ export function App() {
         </div>
 
         <div className="grid2">
-          <CensusPanel census={census} />
+          <CensusPanel census={census} point={point} />
           <BuildingList point={point} />
         </div>
         <div className="grid2">
