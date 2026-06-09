@@ -9,22 +9,29 @@ export function BuildingList({ point }: { point: YearState }) {
       <h2>{t('slice.buildingsTitle')}</h2>
       <ul className="blist">
         {point.buildings.map((b) => {
-          const cls = b.unlocked
-            ? b.tag === 'magic'
-              ? 'b-mag'
-              : b.tag === 'tech'
-                ? 'b-tech'
-                : 'b-on'
-            : 'b-off';
+          const cls = b.replaced
+            ? 'b-replaced'
+            : b.unlocked
+              ? b.tag === 'magic'
+                ? 'b-mag'
+                : b.tag === 'tech'
+                  ? 'b-tech'
+                  : 'b-on'
+              : 'b-off';
+          const right = b.replaced
+            ? t('slice.replaced')
+            : b.unlocked
+              ? b.count > 1
+                ? `${t('slice.has')} ×${b.count}`
+                : t('slice.has')
+              : t('slice.from', { n: fmt(b.threshold) });
           return (
             <li className={cls} key={b.id}>
               <span>
-                {b.unlocked ? '●' : '○'} {t(`buildings.${b.id}`)}
+                {b.unlocked && !b.replaced ? '●' : '○'} {t(`buildings.${b.id}`)}
                 {TAG_GLYPH[b.tag]}
               </span>
-              <span className="at">
-                {b.unlocked ? t('slice.has') : t('slice.from', { n: fmt(b.threshold) })}
-              </span>
+              <span className="at">{right}</span>
             </li>
           );
         })}

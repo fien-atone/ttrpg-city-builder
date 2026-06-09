@@ -1,9 +1,17 @@
 import type { Dispatch } from 'react';
-import type { ResourceType, WorldConfig } from '../domain/types';
+import type { Resource, ResourceType, WorldConfig } from '../domain/types';
 import type { ConfigAction } from '../state/config';
 import { useI18n } from '../i18n/I18nContext';
 
 const TYPES: ResourceType[] = ['iron', 'copper', 'gold', 'silver', 'gems', 'coal', 'stone', 'salt', 'timber'];
+
+const d5 = () => 1 + Math.floor(Math.random() * 5);
+
+function randomResources(): Resource[] {
+  const n = 1 + Math.floor(Math.random() * 3);
+  const pool = [...TYPES].sort(() => Math.random() - 0.5).slice(0, n);
+  return pool.map((type) => ({ type, volume: d5(), accessibility: d5(), depth: d5() }));
+}
 
 interface Props {
   config: WorldConfig;
@@ -16,16 +24,21 @@ export function ResourceEditor({ config, dispatch }: Props) {
   const rs = config.geology.resources;
   const set = (idx: number, key: string, value: unknown) =>
     dispatch({ type: 'setField', path: `geology.resources.${idx}.${key}`, value });
-  const setList = (next: typeof rs) =>
+  const setList = (next: Resource[]) =>
     dispatch({ type: 'setField', path: 'geology.resources', value: next });
 
   return (
     <div className="editor">
-      <div className="editor-head">
-        <span>{t('fields.resources')}</span>
-        <span title={`${t('fields.amount')} / ${t('fields.linkSpeed')} / ${t('fields.harshness')}`}>
-          V · A · D
-        </span>
+      <div className="editor-label">
+        {t('fields.resources')}
+        <span className="hint"> · {t('hints.resources')}</span>
+      </div>
+      <div className="editor-head res">
+        <span />
+        <span>{t('resfields.volume')}</span>
+        <span>{t('resfields.access')}</span>
+        <span>{t('resfields.depth')}</span>
+        <span />
       </div>
       {rs.map((r, i) => (
         <div className="editor-row res" key={i}>
@@ -44,12 +57,17 @@ export function ResourceEditor({ config, dispatch }: Props) {
           </button>
         </div>
       ))}
-      <button
-        className="mini add"
-        onClick={() => setList([...rs, { type: 'iron', volume: 3, accessibility: 3, depth: 2 }])}
-      >
-        + {t('actions.add')}
-      </button>
+      <div className="btnrow">
+        <button
+          className="mini add"
+          onClick={() => setList([...rs, { type: 'iron', volume: 3, accessibility: 3, depth: 2 }])}
+        >
+          + {t('actions.add')}
+        </button>
+        <button className="mini add" onClick={() => setList(randomResources())}>
+          {t('actions.randomize')}
+        </button>
+      </div>
     </div>
   );
 }

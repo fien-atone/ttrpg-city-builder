@@ -11,13 +11,21 @@ function reconcile(raw: Partial<WorldConfig>): WorldConfig {
     version: CONFIG_VERSION,
     geography: { ...defaultWorldConfig.geography, ...raw.geography },
     geology: { ...defaultWorldConfig.geology, ...raw.geology },
-    climate: { ...defaultWorldConfig.climate, ...raw.climate },
+    climate: {
+      ...defaultWorldConfig.climate,
+      ...raw.climate,
+      hazards: { ...defaultWorldConfig.climate.hazards, ...(raw.climate as any)?.hazards },
+    },
     founders: { ...defaultWorldConfig.founders, ...raw.founders },
     wildlife: { ...defaultWorldConfig.wildlife, ...raw.wildlife },
     polity: { ...defaultWorldConfig.polity, ...raw.polity },
     mission: { ...defaultWorldConfig.mission, ...raw.mission },
     arcana: { ...defaultWorldConfig.arcana, ...raw.arcana },
-    support: raw.support ?? defaultWorldConfig.support,
+    // pre-v2 saves stored keyframes — fall back to defaults for the new shape
+    support:
+      raw.support && typeof (raw.support as any).investment === 'number'
+        ? { ...defaultWorldConfig.support, ...raw.support }
+        : defaultWorldConfig.support,
     neighbors: raw.neighbors ?? defaultWorldConfig.neighbors,
     scheduledChanges: raw.scheduledChanges ?? [],
   };

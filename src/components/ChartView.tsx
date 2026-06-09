@@ -89,6 +89,31 @@ export function ChartView({ sim, selectedYear }: Props) {
       ctx.fill();
     });
 
+    // designation changes: small ticks along the top
+    sim.designationHistory.forEach((dc, i) => {
+      if (i === 0) return; // founding designation isn't a "change"
+      const x = X(dc.year);
+      ctx.strokeStyle = COLORS.magic;
+      ctx.lineWidth = 1.6;
+      ctx.beginPath();
+      ctx.moveTo(x, pad.t);
+      ctx.lineTo(x, pad.t + 8);
+      ctx.stroke();
+    });
+
+    // collapse: dashed red line at the year of abandonment
+    if (sim.outcome.collapsed) {
+      const x = X(sim.outcome.collapsed.year);
+      ctx.strokeStyle = COLORS.bad;
+      ctx.setLineDash([5, 4]);
+      ctx.lineWidth = 1.6;
+      ctx.beginPath();
+      ctx.moveTo(x, pad.t);
+      ctx.lineTo(x, h - pad.b);
+      ctx.stroke();
+      ctx.setLineDash([]);
+    }
+
     // selected-year cursor
     const sy = Math.min(selectedYear, P.length - 1);
     const sp = P[sy];

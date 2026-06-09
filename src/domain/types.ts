@@ -59,11 +59,16 @@ export interface Geology {
   stability: number; // 1..5 — quakes/sinkholes when low
 }
 
+export interface ClimateHazards {
+  winters: boolean;
+  storms: boolean;
+  droughts: boolean;
+}
 export interface Climate {
   temperature: number; // 1 (frigid) .. 5 (hot)
   rainfall: number; // 1 (arid) .. 5 (wet)
-  harshness: number; // 1..5 — storms, winters, mortality pressure
   growingSeason: number; // 1..5 — length of the productive season
+  hazards: ClimateHazards; // optional extra weather; "harshness" is derived
 }
 
 export type SpeciesId = 'human' | 'elf' | 'dwarf' | 'halfling' | 'orc';
@@ -115,14 +120,16 @@ export interface Mission {
   horizonYears: number; // by when it should be met
 }
 
-export type SupportKind = 'investment' | 'subsidy' | 'aid';
-export interface SupportKeyframe {
-  year: number;
-  amount: number; // 0..5 funding intensity at this year
-  kind: SupportKind;
-}
+/**
+ * Funding as a simple progression instead of raw keyframes:
+ * a one-off investment that tapers to zero, plus a systemic subsidy
+ * held at a level until a cut-off year.
+ */
 export interface SupportCfg {
-  keyframes: SupportKeyframe[]; // time-varying funding trajectory (interpolated)
+  investment: number; // 0..5 — one-off, front-loaded
+  investmentYears: number; // tapers linearly to zero over N years
+  subsidy: number; // 0..5 — systemic level
+  subsidyUntil: number; // year the subsidy ends
 }
 
 // lightweight magic/tech setting (keeps the "magic + tech" premise & building gating)
@@ -172,6 +179,7 @@ export type DomainKey =
   | 'wildlife'
   | 'polity'
   | 'mission'
+  | 'support'
   | 'arcana';
 
 // ───────────────────────── levers (stable model interface) ─────────────────────────
@@ -211,6 +219,8 @@ export interface BuildingDef {
   tag: BuildingTag;
   needMagic?: number; // requires regional magic >= n
   needTech?: boolean; // suppressed in strongly magical regions
+  replacedBy?: string; // id of the building that supersedes this one
+  countPer?: number; // one more of these per N residents
 }
 
 export interface BuildingState {
@@ -218,6 +228,8 @@ export interface BuildingState {
   tag: BuildingTag;
   threshold: number;
   unlocked: boolean;
+  replaced: boolean; // superseded by a later building
+  count: number; // how many the settlement has
 }
 
 export interface Composition {

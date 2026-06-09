@@ -7,7 +7,7 @@ import { wildlifeDefaults, wildlifePresets, wildlifeContribute } from './wildlif
 import { neighborsDefaults, neighborsContribute } from './neighbors';
 import { polityDefaults, polityPresets, polityContribute } from './polity';
 import { missionDefaults, missionPresets, missionContribute } from './mission';
-import { supportDefaults, supportContribute } from './support';
+import { supportDefaults, supportPresets, supportContribute } from './support';
 import { arcanaDefaults, arcanaPresets, arcanaContribute } from './arcana';
 
 export const CONFIG_VERSION = 1;
@@ -53,5 +53,6 @@ export const DOMAIN_PRESETS: Record<DomainKey, Record<string, Partial<unknown>>>
   wildlife: wildlifePresets,
   polity: polityPresets,
   mission: missionPresets,
+  support: supportPresets,
   arcana: arcanaPresets,
 };

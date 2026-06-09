@@ -1,68 +1,37 @@
 import type { Dispatch } from 'react';
-import type { SupportKind, WorldConfig } from '../domain/types';
+import type { WorldConfig } from '../domain/types';
 import type { ConfigAction } from '../state/config';
 import { useI18n } from '../i18n/I18nContext';
-
-const KINDS: SupportKind[] = ['investment', 'subsidy', 'aid'];
+import { RangeField, NumberField } from '../lib/inputs';
 
 interface Props {
   config: WorldConfig;
   dispatch: Dispatch<ConfigAction>;
 }
 
-/** Funding trajectory: keyframes of {year, amount, kind} interpolated over time. */
+/** Funding progression: one-off tapering investment + systemic subsidy until a year. */
 export function SupportEditor({ config, dispatch }: Props) {
   const { t } = useI18n();
-  const frames = config.support.keyframes;
+  const s = config.support;
+  const set = (key: string, value: number) =>
+    dispatch({ type: 'setField', path: `support.${key}`, value });
 
   return (
-    <div className="editor">
-      <div className="editor-head">
-        <span>{t('fields.year')}</span>
-        <span>{t('fields.amount')}</span>
-        <span>{t('fields.kind')}</span>
-        <span />
-      </div>
-      {frames.map((f, i) => (
-        <div className="editor-row kf" key={i}>
-          <input
-            type="number"
-            min={0}
-            value={f.year}
-            onChange={(e) => dispatch({ type: 'setKeyframe', index: i, frame: { ...f, year: Number(e.target.value) } })}
-          />
-          <input
-            type="number"
-            min={0}
-            max={5}
-            step={0.5}
-            value={f.amount}
-            onChange={(e) => dispatch({ type: 'setKeyframe', index: i, frame: { ...f, amount: Number(e.target.value) } })}
-          />
-          <select
-            value={f.kind}
-            onChange={(e) => dispatch({ type: 'setKeyframe', index: i, frame: { ...f, kind: e.target.value as SupportKind } })}
-          >
-            {KINDS.map((k) => (
-              <option key={k} value={k}>
-                {t(`supportKind.${k}`)}
-              </option>
-            ))}
-          </select>
-          <button className="mini" onClick={() => dispatch({ type: 'removeKeyframe', index: i })}>
-            {t('actions.remove')}
-          </button>
+    <div>
+      <div className="subblock">
+        <div className="subblock-title">
+          {t('support.investment')} <span className="hint">· {t('support.oneOffNote')}</span>
         </div>
-      ))}
-      <button
-        className="mini add"
-        onClick={() => {
-          const lastYear = frames.length ? frames[frames.length - 1].year + 10 : 0;
-          dispatch({ type: 'addKeyframe', frame: { year: lastYear, amount: 0, kind: 'subsidy' } });
-        }}
-      >
-        + {t('actions.add')}
-      </button>
+        <RangeField label={t('fields.amount')} value={s.investment} min={0} max={5} step={0.5} onChange={(v) => set('investment', v)} />
+        <NumberField label={`${t('support.investmentYears')} (${t('support.years')})`} value={s.investmentYears} min={0} max={400} onChange={(v) => set('investmentYears', v)} />
+      </div>
+      <div className="subblock">
+        <div className="subblock-title">
+          {t('support.subsidy')} <span className="hint">· {t('support.systemicNote')}</span>
+        </div>
+        <RangeField label={t('fields.amount')} value={s.subsidy} min={0} max={5} step={0.5} onChange={(v) => set('subsidy', v)} />
+        <NumberField label={t('support.subsidyUntil')} value={s.subsidyUntil} min={0} max={400} onChange={(v) => set('subsidyUntil', v)} />
+      </div>
     </div>
   );
 }

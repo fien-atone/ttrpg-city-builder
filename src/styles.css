@@ -34,12 +34,12 @@ h2 {
 }
 .wrap {
   display: grid;
-  grid-template-columns: 340px 1fr;
+  grid-template-columns: 400px 1fr;
   min-height: 100vh;
 }
 .controls {
   background: var(--panel);
-  padding: 16px 18px 40px;
+  padding: 20px 22px 48px;
   border-right: 1px solid var(--line);
   overflow-y: auto;
   max-height: 100vh;
@@ -54,13 +54,14 @@ h2 {
 }
 
 .field {
-  margin-bottom: 13px;
+  margin-bottom: 14px;
 }
 .field label {
   display: flex;
   justify-content: space-between;
-  font-size: 12.5px;
-  margin-bottom: 4px;
+  gap: 10px;
+  font-size: 13px;
+  margin-bottom: 5px;
 }
 .field label b {
   color: var(--accent);
@@ -320,7 +321,7 @@ canvas.chart {
 /* ── domain sections ── */
 .domain {
   border-top: 1px solid var(--line);
-  padding: 6px 0;
+  padding: 10px 0;
 }
 .domain-head {
   display: flex;
@@ -356,10 +357,44 @@ canvas.chart {
   padding: 3px 6px;
 }
 .domain-body {
-  padding: 6px 0 10px;
+  padding: 10px 0 12px;
 }
 .domain-body .field {
+  margin-bottom: 13px;
+}
+.editor-label {
+  font-size: 12px;
+  color: var(--txt);
+  margin: 8px 0 6px;
+  font-weight: 600;
+}
+.editor-label .hint {
+  font-weight: 400;
+}
+.btnrow {
+  display: flex;
+  gap: 6px;
+  margin-top: 4px;
+}
+.subblock {
+  margin-bottom: 14px;
+  padding: 10px 12px;
+  background: var(--panel2);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+.subblock-title {
+  font-size: 12.5px;
+  font-weight: 600;
   margin-bottom: 9px;
+}
+.b-replaced {
+  color: var(--muted);
+  opacity: 0.5;
+  text-decoration: line-through;
+}
+.b-replaced .at {
+  text-decoration: none;
 }
 
 /* ── list editors ── */
@@ -383,10 +418,13 @@ canvas.chart {
   grid-template-columns: 0.9fr 0.9fr 1.2fr auto;
 }
 .editor-head {
-  grid-template-columns: 1fr 1fr 1fr auto;
+  grid-template-columns: 1.4fr 0.8fr 0.8fr 1fr;
   color: var(--muted);
   font-size: 10.5px;
   text-transform: uppercase;
+}
+.editor-head.res {
+  grid-template-columns: 1.4fr 0.7fr 0.7fr 0.7fr auto;
 }
 .editor-row input,
 .editor-row select {

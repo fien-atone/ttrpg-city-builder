@@ -15,6 +15,8 @@ interface I18nValue {
   setLang: (l: Lang) => void;
   langs: Lang[];
   t: TFn;
+  /** named scale labels, e.g. scale('scales.temperature') → ['Frigid', …] */
+  scale: (path: string) => string[];
   /** locale-aware integer formatting */
   fmt: (n: number) => string;
 }
@@ -44,9 +46,13 @@ export function I18nProvider({ children }: { children: ReactNode }) {
   const value = useMemo<I18nValue>(() => {
     const messages = locales[lang];
     const t: TFn = (path, params) => interpolate(resolvePath(messages, path), params);
+    const scale = (path: string): string[] => {
+      const v = path.split('.').reduce<unknown>((o, k) => (o == null ? o : (o as any)[k]), messages);
+      return Array.isArray(v) ? (v as string[]) : [];
+    };
     const nf = new Intl.NumberFormat(lang === 'ru' ? 'ru-RU' : 'en-US');
     const fmt = (n: number) => nf.format(Math.round(n));
-    return { lang, setLang, langs: LANGS, t, fmt };
+    return { lang, setLang, langs: LANGS, t, scale, fmt };
   }, [lang, setLang]);
 
   return <I18nContext.Provider value={value}>{children}</I18nContext.Provider>;

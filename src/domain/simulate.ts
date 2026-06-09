@@ -17,6 +17,7 @@ import { mulberry32 } from './rng';
 import { applySchedule } from './trajectory';
 import { initialReserve } from './config/geology';
 import { viabilityFloor } from './config/founders';
+import { derivedHarshness } from './config/climate';
 import { deriveDesignation } from './designation';
 import { statusFor, evaluateMission } from './outcome';
 
@@ -73,11 +74,16 @@ export function simulate(world: WorldConfig): SimResult {
     }
 
     // ---- growth components ----
+    // dependents consume without producing: a top-heavy age structure slows
+    // both the food economy and how attractive the settlement is to settlers
+    const workPenalty = clamp(1 - Math.max(0, dependentFrac - 0.32) * 1.4, 0.55, 1);
+    K *= 0.85 + 0.15 * workPenalty;
+
     const net = lev.naturalGrowth + lev.magicHeal - lev.mortality;
-    const natural = net * pop * (1 - pop / K);
+    const natural = net * pop * (1 - pop / K) * workPenalty;
 
     const migK = 0.02 + lev.migrationPull * 0.012;
-    const inMig = pop < K ? migK * (K - pop) * 0.06 : 0;
+    const inMig = pop < K ? migK * (K - pop) * 0.06 * workPenalty : 0;
     const outMig = lev.migrationPush * 0.0018 * pop + (pop > K ? 0.01 * (pop - K) : 0);
     const migration = inMig - outMig;
 
@@ -92,7 +98,8 @@ export function simulate(world: WorldConfig): SimResult {
     // ---- discrete shocks ----
     if (worldY.shocksEnabled && !collapsed) {
       const roll = rand();
-      const pEvent = 0.035 + (pop > 800 ? 0.025 : 0) + raidGap * 0.02 + (worldY.climate.harshness - 2) * 0.01;
+      const harsh = derivedHarshness(worldY.climate);
+      const pEvent = 0.035 + (pop > 800 ? 0.025 : 0) + raidGap * 0.02 + Math.max(0, harsh - 1.5) * 0.012;
       if (roll < pEvent) {
         const kind = rand();
         let sev: number;
@@ -105,7 +112,8 @@ export function simulate(world: WorldConfig): SimResult {
           sev = (0.08 + rand() * 0.22) * (1 - magic * 0.08);
           ek = 'plague';
         } else if (kind < 0.78) {
-          sev = (0.05 + rand() * 0.18) * (1.3 - worldY.geology.fertility * 0.08);
+          const droughtMult = worldY.climate.hazards.droughts ? 1.3 : 1;
+          sev = (0.05 + rand() * 0.18) * (1.3 - worldY.geology.fertility * 0.08) * droughtMult;
           ek = 'famine';
         } else {
           sev = 0.04 + rand() * 0.08;
@@ -176,16 +184,30 @@ export function simulate(world: WorldConfig): SimResult {
       prevDesignation = designation;
     }
 
-    // ---- buildings (pop + arcana gating) ----
+    // ---- buildings (pop + arcana gating, upgrade chains, counts) ----
     const magicLevel = worldY.arcana.magic;
     const magicDominant = lev.flags.has('magic_dominant');
     const techSuppressed = lev.flags.has('tech_suppressed');
-    const buildings: BuildingState[] = BUILDINGS.map((b) => {
-      let unlocked = newPop >= b.threshold;
+    const skillBoost = 1 - (worldY.founders.skill - 3) * 0.06; // skilled founders build sooner
+    const unlockedIds = new Set<string>();
+    for (const b of BUILDINGS) {
+      let unlocked = newPop >= b.threshold * skillBoost;
       if (unlocked && b.needMagic && magicLevel < b.needMagic) unlocked = false;
       if (unlocked && b.needTech && magicDominant) unlocked = false;
       if (unlocked && b.tag === 'tech' && techSuppressed) unlocked = false;
-      return { id: b.id, tag: b.tag, threshold: b.threshold, unlocked };
+      if (unlocked) unlockedIds.add(b.id);
+    }
+    const buildings: BuildingState[] = BUILDINGS.map((b) => {
+      const unlocked = unlockedIds.has(b.id);
+      // an upgrade chain retires the old building once its successor stands
+      const replaced = unlocked && b.replacedBy !== undefined && unlockedIds.has(b.replacedBy);
+      const count =
+        unlocked && !replaced && b.countPer
+          ? Math.max(1, Math.floor(newPop / b.countPer) + 1)
+          : unlocked && !replaced
+            ? 1
+            : 0;
+      return { id: b.id, tag: b.tag, threshold: b.threshold, unlocked, replaced, count };
     });
 
     points.push({

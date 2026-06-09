@@ -8,14 +8,19 @@ interface RangeProps {
   step?: number;
   suffix?: string;
   display?: string;
+  /** named steps shown instead of the raw number (scale stays underneath) */
+  labels?: string[];
+  hint?: string;
   onChange: (v: number) => void;
 }
-export function RangeField({ label, value, min, max, step = 1, suffix, display, onChange }: RangeProps) {
+export function RangeField({ label, value, min, max, step = 1, suffix, display, labels, hint, onChange }: RangeProps) {
+  const idx = Math.min(Math.max(Math.round(value) - min, 0), (labels?.length ?? 1) - 1);
+  const shown = display ?? (labels ? labels[idx] : `${value}${suffix ?? ''}`);
   return (
     <div className="field">
       <label>
         <span>{label}</span>
-        <b>{display ?? `${value}${suffix ?? ''}`}</b>
+        <b>{shown}</b>
       </label>
       <input
         type="range"
@@ -25,6 +30,7 @@ export function RangeField({ label, value, min, max, step = 1, suffix, display, 
         value={value}
         onChange={(e) => onChange(Number(e.target.value))}
       />
+      {hint && <div className="hint">{hint}</div>}
     </div>
   );
 }
