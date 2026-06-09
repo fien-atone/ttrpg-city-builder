@@ -1,19 +1,34 @@
 import type { MissionResult, Status, WorldConfig, YearState } from './types';
 
-/** Per-year status from size, fill and momentum. */
-export function statusFor(
-  year: number,
-  population: number,
-  floor: number,
-  capacity: number,
-  growth: number,
-): Status {
-  if (year < 6 && population < floor * 3) return 'founding';
-  if (population <= floor) return 'struggling';
-  const fill = capacity > 0 ? population / capacity : 0;
-  if (growth < -0.012) return 'declining';
-  if (growth > 0.02 && fill < 0.92) return 'thriving';
-  if (population < floor * 2) return 'struggling';
+export interface StatusInputs {
+  year: number;
+  population: number;
+  floor: number; // viability floor from founders
+  capacity: number;
+  smoothedGrowth: number; // 5-year average annual rate
+  prosperity: number; // 0..2
+  foodDeficit: boolean; // capacity meaningfully below population
+}
+
+/**
+ * Per-year status. Deliberately conservative: "thriving" needs real size,
+ * sustained growth AND prosperity — a hamlet of 40 rebounding from a plague
+ * is "struggling", not "thriving".
+ */
+export function statusFor(s: StatusInputs): Status {
+  if (s.year < 8) return 'founding';
+  if (s.population <= s.floor * 1.8 || s.foodDeficit || s.smoothedGrowth < -0.025) {
+    return 'struggling';
+  }
+  if (s.smoothedGrowth < -0.008) return 'declining';
+  if (
+    s.smoothedGrowth > 0.015 &&
+    s.population >= s.floor * 3 &&
+    s.prosperity > 0.9 &&
+    s.population < s.capacity * 0.95
+  ) {
+    return 'thriving';
+  }
   return 'stable';
 }
 

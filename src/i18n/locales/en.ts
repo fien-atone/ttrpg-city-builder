@@ -225,6 +225,8 @@ export const en = {
     buildings: 'Buildings',
     peak: 'Peak',
     funding: 'Funding',
+    development: 'Development',
+    prosperity: 'Prosperity',
     year: 'year',
   },
   charts: {

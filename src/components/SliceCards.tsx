@@ -16,6 +16,8 @@ export function SliceCards({ point, peak }: Props) {
     [t('cards.growth'), `${(point.growth * 100).toFixed(2)}%`],
     [t('cards.capacity'), fmt(point.capacity)],
     [t('cards.filled'), `${Math.round(filled * 100)}%`],
+    [t('cards.development'), `${Math.round(point.development * 100)}%`],
+    [t('cards.prosperity'), point.prosperity.toFixed(2)],
     [t('cards.funding'), point.funding.toFixed(1)],
     [t('cards.buildings'), `${unlocked}/${point.buildings.length}`],
     [t('cards.peak'), fmt(peak)],

@@ -228,6 +228,8 @@ export const ru: Messages = {
     buildings: 'Зданий',
     peak: 'Пик',
     funding: 'Поддержка',
+    development: 'Развитость',
+    prosperity: 'Достаток',
     year: 'год',
   },
   charts: {

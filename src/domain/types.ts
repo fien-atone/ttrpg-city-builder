@@ -207,6 +207,8 @@ export interface StateSnapshot {
   year: number;
   population: number;
   reserves: number; // remaining resource reserve (Infinity if none)
+  development: number; // 0..1 accumulated infrastructure stock
+  prosperity: number; // 0..2 economic output per capita
 }
 
 /** A domain's contribution: mutate the lever accumulator from its config slice. */
@@ -250,10 +252,12 @@ export interface YearState {
   population: number;
   capacity: number;
   phase: PhaseId;
-  growth: number;
+  growth: number; // 5-year smoothed annual rate
   status: Status;
   designation: Designation;
   funding: number;
+  development: number; // 0..1 infrastructure stock
+  prosperity: number; // 0..2 output per capita
   buildings: BuildingState[];
   composition: Composition;
   sectors: Record<Sector, number>; // normalized shares summing to 1
