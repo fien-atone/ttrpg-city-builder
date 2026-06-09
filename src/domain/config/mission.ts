@@ -27,7 +27,7 @@ export const MISSION_TARGET_DESIGNATION: Record<MissionId, Designation> = {
   trade_hub: 'market_town',
 };
 
-export const missionContribute: Contribute = (lev, world) => {
+export const missionContribute: Contribute = (lev, world, snap) => {
   switch (world.mission.goal) {
     case 'new_nation':
       lev.migrationPull += 4;
@@ -35,8 +35,11 @@ export const missionContribute: Contribute = (lev, world) => {
       lev.sectorWeights.services += 4;
       break;
     case 'resource_extraction':
-      lev.sectorWeights.mining += 6;
-      lev.migrationPull += 2;
+      // the charter only matters while there is something left to extract
+      if (snap.reserves > 0) {
+        lev.sectorWeights.mining += 6;
+        lev.migrationPull += 2;
+      }
       break;
     case 'military_outpost':
     case 'stop_nomads':

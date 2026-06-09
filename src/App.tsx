@@ -20,6 +20,7 @@ import { BuildingList } from './components/BuildingList';
 import { CensusPanel } from './components/CensusPanel';
 import { OutcomePanel } from './components/OutcomePanel';
 import { EventLog } from './components/EventLog';
+import { DossierModal } from './components/DossierModal';
 
 export function App() {
   const [config, dispatch] = useReducer(
@@ -29,8 +30,9 @@ export function App() {
   );
   const sim = useSimulation(config);
   const [selectedYear, setSelectedYear] = useState(0);
+  const [dossierOpen, setDossierOpen] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
-  const { t, fmt } = useI18n();
+  const { t, fmt, scale } = useI18n();
 
   useEffect(() => {
     setSelectedYear((y) => Math.min(y, sim.years));
@@ -51,16 +53,10 @@ export function App() {
     e.target.value = '';
   };
 
-  const onDossier = () => {
-    const md = buildDossier(sim, point, census, config, t, fmt);
-    const blob = new Blob([md], { type: 'text/markdown' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `settlement-y${point.year}.md`;
-    a.click();
-    URL.revokeObjectURL(url);
-  };
+  const dossierMd = useMemo(
+    () => (dossierOpen ? buildDossier(sim, point, census, config, { t, fmt, scale }) : ''),
+    [dossierOpen, sim, point, census, config, t, fmt, scale],
+  );
 
   return (
     <div className="wrap">
@@ -75,7 +71,7 @@ export function App() {
           }}
           onExport={() => exportJson(config)}
           onImport={onImport}
-          onDossier={onDossier}
+          onDossier={() => setDossierOpen(true)}
         />
         <input ref={fileRef} type="file" accept="application/json" hidden onChange={onFile} />
 
@@ -99,6 +95,9 @@ export function App() {
           <EventLog events={sim.events} selectedYear={selectedYear} />
         </div>
       </main>
+      {dossierOpen && (
+        <DossierModal markdown={dossierMd} year={point.year} onClose={() => setDossierOpen(false)} />
+      )}
     </div>
   );
 }
