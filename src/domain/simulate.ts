@@ -9,16 +9,18 @@ import type {
   DesignationChange,
   Outcome,
   Sector,
+  ResourceState,
 } from './types';
 import { buildLevers, capacityFrom, normalizeSectors } from './levers';
 import { BUILDINGS } from './buildings';
 import { phaseOf } from './phases';
 import { mulberry32 } from './rng';
 import { applySchedule } from './trajectory';
-import { initialReserve } from './config/geology';
+import { depositReserve, depositDraw, isWorkable, obviousAtFounding } from './config/geology';
 import { viabilityFloor, initialCapabilities } from './config/founders';
 import { derivedHarshness } from './config/climate';
 import { fundingAt } from './config/support';
+import { GOVERNANCE } from './config/polity';
 import { deriveDesignation } from './designation';
 import { statusFor, evaluateMission } from './outcome';
 
@@ -82,14 +84,25 @@ export function simulate(world: WorldConfig): SimResult {
   const baseSnap = {
     year: 0,
     population: world.founders.count,
-    reserves: Infinity,
+    reserves: 0,
+    miningDraw: 0,
     development: 0,
     prosperity: 0,
     capabilities,
   };
   const baseK = capacityFrom(buildLevers(world, baseSnap));
-  let reserves = initialReserve(world.geology, baseK);
-  let reserveExhausted = false;
+
+  // per-deposit lifecycle: unknown → dormant/worked → depleted
+  const deposits = world.geology.resources.map((r) => {
+    const known = obviousAtFounding(r, capabilities.mining);
+    return {
+      def: r,
+      known,
+      depleted: false,
+      reserve: depositReserve(r, baseK),
+      reserve0: depositReserve(r, baseK),
+    };
+  });
 
   let pop = world.founders.count;
   let localsStock = pop;
@@ -115,10 +128,19 @@ export function simulate(world: WorldConfig): SimResult {
 
   for (let y = 0; y <= years; y++) {
     const worldY = applySchedule(world, y);
+
+    // which deposits are actually being worked this year
+    const workedDeposits = deposits.filter(
+      (d) => d.known && !d.depleted && isWorkable(d.def, capabilities.mining),
+    );
+    const miningDraw = workedDeposits.reduce((a, d) => a + depositDraw(d.def), 0);
+    const reservesLeft = deposits.reduce((a, d) => a + (d.depleted ? 0 : d.reserve), 0);
+
     const lev = buildLevers(worldY, {
       year: y,
       population: pop,
-      reserves,
+      reserves: reservesLeft,
+      miningDraw,
       development,
       prosperity,
       capabilities,
@@ -128,16 +150,35 @@ export function simulate(world: WorldConfig): SimResult {
     const workPenalty = clamp(1 - Math.max(0, dependentFrac - 0.32) * 1.4, 0.55, 1);
     let K = capacityFrom(lev) * (0.75 + 0.45 * development) * (0.85 + 0.15 * workPenalty);
 
-    // ---- resource depletion: the seam only depletes if someone MINES it ----
-    if (Number.isFinite(reserves)) {
-      reserves -= pop * 4 * prevMiningShare;
-      if (reserves <= 0 && !reserveExhausted) {
-        reserveExhausted = true;
-        events.push({ year: y, kind: 'exhausted', severity: 0 });
+    // ---- depletion: only WORKED deposits drain, proportional to their draw ----
+    if (workedDeposits.length > 0 && prevMiningShare > 0) {
+      const totalDraw = workedDeposits.reduce((a, d) => a + depositDraw(d.def), 0);
+      for (const d of workedDeposits) {
+        d.reserve -= pop * 4 * prevMiningShare * (depositDraw(d.def) / Math.max(0.01, totalDraw));
+        if (d.reserve <= 0 && !d.depleted) {
+          d.depleted = true;
+          events.push({ year: y, kind: 'exhausted', severity: 0, resource: d.def.type });
+        }
       }
-      if (reserves <= 0) {
-        lev.migrationPull *= 0.25;
-        lev.migrationPush += 1.5;
+    }
+    // a mined-out town bleeds prospectors and workers
+    if (deposits.length > 0 && deposits.every((d) => d.depleted)) {
+      lev.migrationPull *= 0.25;
+      lev.migrationPush += 1.5;
+    }
+
+    // ---- discovery: hidden deposits get found by luck × expertise × traffic ----
+    if (!collapsed) {
+      for (const d of deposits) {
+        if (d.known || d.depleted) continue;
+        const pFind =
+          0.002 * d.def.accessibility +
+          capabilities.mining * 0.012 +
+          lev.transientFlow * 0.01;
+        if (rand() < pFind) {
+          d.known = true;
+          events.push({ year: y, kind: 'discovery', severity: 0, resource: d.def.type });
+        }
       }
     }
 
@@ -210,7 +251,49 @@ export function simulate(world: WorldConfig): SimResult {
               const s = SPECIALIST_SECTORS[i];
               capabilities[s] = clamp(capabilities[s] + 0.3 * (1 - capabilities[s]), 0, 0.98);
               events.push({ year: y, kind: 'arrival', severity: 0, sector: s });
+              // prospectors recognise what locals walked past for years
+              if (s === 'mining') {
+                const hidden = deposits.find((d) => !d.known && !d.depleted);
+                if (hidden) {
+                  hidden.known = true;
+                  events.push({ year: y, kind: 'discovery', severity: 0, resource: hidden.def.type });
+                }
+              }
               break;
+            }
+          }
+        }
+      }
+    }
+
+    // ---- deliberate recruitment: organized rule INVITES the specialists it
+    // lacks (a lord sends for miners; leaderless hamlets can only wait) ----
+    const gov = GOVERNANCE[worldY.polity.governance];
+    if (!collapsed && pop >= 40 && gov.recruit > 0 && (lev.funding > 0 || prosperity > 0.75)) {
+      if (rand() < gov.recruit) {
+        const bias = (s: Sector): number => {
+          if (worldY.polity.governance === 'temple' && s === 'clergy') return 3;
+          if (worldY.polity.governance === 'guild' && (s === 'trade' || s === 'crafts')) return 2;
+          if (worldY.polity.governance === 'lord' && s === 'mining') return 1.5;
+          return 1;
+        };
+        let best: Sector | null = null;
+        let bestW = 0.8; // require a real dormant opportunity
+        for (const s of SPECIALIST_SECTORS) {
+          const wgt = opp[s] * (1 - capabilities[s]) * bias(s);
+          if (wgt > bestW) {
+            bestW = wgt;
+            best = s;
+          }
+        }
+        if (best) {
+          capabilities[best] = clamp(capabilities[best] + 0.35 * (1 - capabilities[best]), 0, 0.98);
+          events.push({ year: y, kind: 'arrival', severity: 0, sector: best });
+          if (best === 'mining') {
+            const hidden = deposits.find((d) => !d.known && !d.depleted);
+            if (hidden) {
+              hidden.known = true;
+              events.push({ year: y, kind: 'discovery', severity: 0, resource: hidden.def.type });
             }
           }
         }
@@ -256,6 +339,18 @@ export function simulate(world: WorldConfig): SimResult {
         // raids and fires destroy infrastructure, not only people
         if (ek === 'raid') development *= 1 - sev * 0.6;
         if (ek === 'fire') development *= 1 - sev * 0.8;
+        // knowledge dies with people: a plague that takes the gold-diggers
+        // takes the gold-digging too. Fragility depends on how many people
+        // actually hold the craft — an artel of 15 can vanish in one winter,
+        // a guild quarter of 200 always has survivors.
+        if (ek === 'plague' || ek === 'raid') {
+          const workforce = pop * (1 - dependentFrac);
+          for (const s of SPECIALIST_SECTORS) {
+            const holders = Math.max(4, workforce * sectors[s]);
+            const fragility = clamp(0.4 + 25 / holders, 0.4, 2.5);
+            capabilities[s] *= 1 - Math.min(0.8, sev * fragility);
+          }
+        }
         events.push({ year: Math.min(y + 1, years), kind: ek, severity: sev });
       }
     }
@@ -335,11 +430,17 @@ export function simulate(world: WorldConfig): SimResult {
     const techSuppressed = lev.flags.has('tech_suppressed');
     const skillBoost = 1 - (worldY.founders.skill - 3) * 0.06;
     const unlockedIds = new Set<string>();
+    const capShort = new Map<string, Sector>();
     for (const b of BUILDINGS) {
       let unlocked = newPop >= b.threshold * skillBoost;
       if (unlocked && b.needMagic && magicLevel < b.needMagic) unlocked = false;
       if (unlocked && b.needTech && magicDominant) unlocked = false;
       if (unlocked && b.tag === 'tech' && techSuppressed) unlocked = false;
+      // people-gating: a church without clergy is just a barn with a bell
+      if (unlocked && b.needCap && capabilities[b.needCap.sector] < b.needCap.level) {
+        unlocked = false;
+        capShort.set(b.id, b.needCap.sector);
+      }
       if (unlocked) unlockedIds.add(b.id);
     }
     const buildings: BuildingState[] = BUILDINGS.map((b) => {
@@ -351,8 +452,28 @@ export function simulate(world: WorldConfig): SimResult {
           : unlocked && !replaced
             ? 1
             : 0;
-      return { id: b.id, tag: b.tag, threshold: b.threshold, unlocked, replaced, count };
+      return {
+        id: b.id,
+        tag: b.tag,
+        threshold: b.threshold,
+        unlocked,
+        replaced,
+        count,
+        missingCap: capShort.get(b.id),
+      };
     });
+
+    const resourceStates: ResourceState[] = deposits.map((d) => ({
+      type: d.def.type,
+      phase: d.depleted
+        ? 'depleted'
+        : !d.known
+          ? 'unknown'
+          : isWorkable(d.def, capabilities.mining)
+            ? 'worked'
+            : 'dormant',
+      reserveFrac: d.reserve0 > 0 ? clamp(d.reserve / d.reserve0, 0, 1) : 0,
+    }));
 
     points.push({
       year: y,
@@ -366,6 +487,7 @@ export function simulate(world: WorldConfig): SimResult {
       development,
       prosperity,
       capabilities: { ...capabilities },
+      resources: resourceStates,
       buildings,
       composition: { locals: localsStock, migrants: migrantsStock, transients, dependents },
       sectors,

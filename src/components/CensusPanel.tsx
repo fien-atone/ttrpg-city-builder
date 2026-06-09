@@ -84,6 +84,20 @@ export function CensusPanel({ census, point }: { census: Census; point: YearStat
         {t('census.workforce')}: {fmt(census.workforce)}
       </div>
 
+      {point.resources.length > 0 && (
+        <>
+          <h2>{t('census.depositsTitle')}</h2>
+          <ul className="plain-list">
+            {point.resources.map((r, i) => (
+              <li key={i}>
+                {t(`resourceType.${r.type}`)}: {t(`resourceState.${r.phase}`)}
+                {r.phase === 'worked' && ` · ${Math.round(r.reserveFrac * 100)}%`}
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
+
       <h2>{t('census.capabilitiesTitle')}</h2>
       <div className="bars">
         {SHOWN_CAPS.map((s) => {

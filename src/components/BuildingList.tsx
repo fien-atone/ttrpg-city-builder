@@ -24,7 +24,9 @@ export function BuildingList({ point }: { point: YearState }) {
               ? b.count > 1
                 ? `${t('slice.has')} ×${b.count}`
                 : t('slice.has')
-              : t('slice.from', { n: fmt(b.threshold) });
+              : b.missingCap && point.population >= b.threshold
+                ? t('slice.needsCap', { sector: t(`sectors.${b.missingCap}`).toLowerCase() })
+                : t('slice.from', { n: fmt(b.threshold) });
           return (
             <li className={cls} key={b.id}>
               <span>

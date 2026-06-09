@@ -66,6 +66,7 @@ export const ru: Messages = {
     monsters: 'Монстры',
     aggression: 'Агрессивность',
     sovereignty: 'Сюзеренитет',
+    governance: 'Управление',
     borderProximity: 'Близость к границе',
     polStability: 'Центральная власть',
     taxBurden: 'Налоговое бремя',
@@ -91,7 +92,7 @@ export const ru: Messages = {
     skill: 'Доля мастеров/профессионалов — ускоряет ремёсла, услуги и сложные постройки',
     resources: 'Объём = сколько · Доступность = насколько легко добыть · Глубина = как глубоко',
   },
-  resfields: { volume: 'Объём', access: 'Доступн.', depth: 'Глубина' },
+  resfields: { volume: 'Объём', access: 'Доступн.', depth: 'Глубина', value: 'Ценность' },
   hazards: { label: 'Доп. погода', winters: 'Суровые зимы', storms: 'Штормы', droughts: 'Засухи' },
   support: {
     investment: 'Стартовые инвестиции',
@@ -143,6 +144,14 @@ export const ru: Messages = {
   },
   neighborType: { hamlet: 'Деревушка', town: 'Городок', city: 'Город', capital: 'Столица', fort: 'Форт', port: 'Порт' },
   relation: { allied: 'Союзник', friendly: 'Дружеств.', neutral: 'Нейтрал.', rival: 'Соперник', hostile: 'Враждебн.' },
+  governance: {
+    none: 'Безвластие',
+    elder: 'Староста',
+    council: 'Городской совет',
+    lord: 'Местный лорд',
+    guild: 'Гильдейский уговор',
+    temple: 'Храмовая власть',
+  },
   sovereignty: {
     independent: 'Независимое',
     vassal: 'Вассал',
@@ -236,6 +245,7 @@ export const ru: Messages = {
     exhausted: 'Ресурс исчерпан',
     collapse: 'Поселение покинуто',
     arrival: 'Прибыли умельцы',
+    discovery: 'Открыты залежи',
   },
   cards: {
     population: 'Население',
@@ -268,6 +278,7 @@ export const ru: Messages = {
     professionsTitle: 'Ремёсла и занятия',
     workforce: 'Работоспособных',
     capabilitiesTitle: 'Умения поселения',
+    depositsTitle: 'Недра',
   },
   foodChannel: {
     crops: 'Посевы',
@@ -340,6 +351,7 @@ export const ru: Messages = {
     eventLogTitle: 'Лог событий',
     has: 'есть',
     from: '≥ {n}',
+    needsCap: 'нужны: {sector}',
     replaced: 'заменено',
     noEvents: 'пока без потрясений',
     yearN: 'год {n}:',
@@ -369,6 +381,12 @@ export const ru: Messages = {
     magnitude: ['Слабое', 'Малое', 'Среднее', 'Крупное', 'Резкое'],
     deposit: ['Крохотные', 'Скудные', 'Средние', 'Богатые', 'Огромные'],
     capability: ['Не умеют', 'Зачатки', 'Подмастерья', 'Умельцы', 'Мастера'],
+  },
+  resourceState: {
+    unknown: 'не открыто',
+    dormant: 'не разрабатывается',
+    worked: 'разрабатывается',
+    depleted: 'выработано',
   },
   presetNames: {
     coastal_trade: 'Приморская торговля',

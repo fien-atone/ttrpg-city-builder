@@ -1,17 +1,31 @@
-import type { Contribute, Geology, Resource } from '../types';
+import type { Contribute, Geology, Resource, ResourceType } from '../types';
+
+/** Typical market value of a deposit type (can be overridden per resource). */
+export const RESOURCE_VALUE: Record<ResourceType, number> = {
+  gold: 5,
+  gems: 5,
+  silver: 4,
+  salt: 3,
+  iron: 2,
+  copper: 2,
+  coal: 2,
+  stone: 1,
+  timber: 1,
+};
 
 export const geologyDefaults: Geology = {
   fertility: 3,
-  resources: [{ type: 'stone', volume: 3, accessibility: 4, depth: 1 }],
+  resources: [{ type: 'stone', volume: 3, accessibility: 4, depth: 1, value: 1 }],
   stability: 4,
 };
 
-const R = (type: Resource['type'], volume: number, accessibility: number, depth: number): Resource => ({
-  type,
-  volume,
-  accessibility,
-  depth,
-});
+const R = (
+  type: Resource['type'],
+  volume: number,
+  accessibility: number,
+  depth: number,
+  value = RESOURCE_VALUE[type],
+): Resource => ({ type, volume, accessibility, depth, value });
 
 export const geologyPresets: Record<string, Partial<Geology>> = {
   fertile_plain: { fertility: 5, resources: [R('stone', 2, 4, 1)], stability: 5 },
@@ -22,39 +36,47 @@ export const geologyPresets: Record<string, Partial<Geology>> = {
   rich_seam: { fertility: 3, resources: [R('gems', 3, 1, 5), R('iron', 3, 3, 2)], stability: 3 },
 };
 
-/** Effective extraction quality of a resource: volume gated by how reachable it is. */
-function extractability(r: Resource): number {
-  const reach = (r.accessibility - r.depth * 0.5) / 5; // 0..1-ish
-  return Math.max(0, r.volume * Math.max(0.1, reach));
-}
-
 export const geologyContribute: Contribute = (lev, world, snap) => {
   const geo = world.geology;
   lev.foodCapacity *= 0.4 + geo.fertility * 0.22; // fertility 1→0.62, 5→1.5
   lev.sectorWeights.farming += 3 + geo.fertility * 2;
 
-  let mining = 0;
-  for (const r of geo.resources) mining += extractability(r);
-  // mining only matters while the reserve holds out — and a deposit is an
-  // OPPORTUNITY: the boom-town draw only exists once someone here can mine
-  const reserveLeft = Number.isFinite(snap.reserves) ? snap.reserves > 0 : true;
-  if (mining > 0 && reserveLeft) {
+  // mining is driven by what is ACTUALLY worked (per-deposit lifecycle lives
+  // in the simulation), not by what merely sits in the ground
+  const draw = snap.miningDraw;
+  if (draw > 0) {
     const knowHow = snap.capabilities.mining;
-    lev.sectorWeights.mining += mining * 4.2;
-    lev.sectorWeights.crafts += mining * 0.6 * knowHow;
-    lev.migrationPull += mining * 0.25 * (0.1 + 0.9 * knowHow);
-    if (mining >= 6 && knowHow > 0.3) lev.flags.add('rich_deposit');
+    lev.sectorWeights.mining += draw * 2.4;
+    lev.sectorWeights.crafts += draw * 0.35 * knowHow;
+    lev.migrationPull += draw * 0.18 * (0.1 + 0.9 * knowHow);
+    if (draw >= 5 && knowHow > 0.3) lev.flags.add('rich_deposit');
   }
   if (geo.stability <= 2) lev.flags.add('unstable_ground');
 };
 
-/** Total reserve a resource-bearing settlement starts with (Infinity if nothing to deplete). */
-export function initialReserve(geo: Geology, baseK: number): number {
-  let mining = 0;
-  for (const r of geo.resources) {
-    if (r.type === 'stone' || r.type === 'timber' || r.type === 'salt') continue; // renewable-ish
-    mining += r.volume;
-  }
-  if (mining <= 0) return Infinity;
-  return baseK * mining * 10;
+/** Total reserve units a deposit holds (scaled by the local capacity baseline). */
+export function depositReserve(r: Resource, baseK: number): number {
+  return baseK * r.volume * 10;
+}
+
+/** Extraction intensity a worked deposit contributes: volume × how lucrative. */
+export function depositDraw(r: Resource): number {
+  return r.volume * (0.4 + r.value * 0.25);
+}
+
+/**
+ * Is the deposit worth working, given the difficulty and the know-how at
+ * hand? Rare & precious justifies hard digging; cheap & deep gets ignored;
+ * easy & easy-to-find is nearly always worked once recognised.
+ */
+export function isWorkable(r: Resource, miningCap: number): boolean {
+  const feasible = miningCap >= r.depth * 0.12; // skill/equipment to reach it
+  const worthwhile = r.value * 1.2 + r.accessibility * 0.4 - r.depth * 0.6 >= 2;
+  return feasible && worthwhile;
+}
+
+/** Obvious surface outcrops are known from day one; hidden veins are not. */
+export function obviousAtFounding(r: Resource, miningCap: number): boolean {
+  if (r.accessibility >= 4 && r.depth <= 2) return true; // anyone trips over it
+  return miningCap >= 0.5 && r.accessibility >= 2; // prospectors recognise ore
 }

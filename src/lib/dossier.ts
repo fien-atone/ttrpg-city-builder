@@ -84,13 +84,15 @@ export function buildDossier(
   L.push(
     `- ${t('fields.fertility')}: ${word(scale('scales.fertility'), worldY.geology.fertility, 1)}`,
   );
-  if (worldY.geology.resources.length > 0) {
-    const exhausted = sim.events.some((e) => e.kind === 'exhausted' && e.year <= year);
-    const res = worldY.geology.resources
-      .map((r) => `${t(`resourceType.${r.type}`)} (${word(scale('scales.deposit'), r.volume, 1).toLowerCase()})`)
-      .join(', ');
-    L.push(`- ${t('fields.resources')}: ${res}${exhausted ? ` — *${t('events.exhausted').toLowerCase()}*` : ''}`);
-    if (!exhausted && point.capabilities.mining < 0.25) L.push(`  - *${t('dossier.depositsUnknown')}*`);
+  if (point.resources.length > 0) {
+    const res = point.resources
+      .map((rs, i) => {
+        const def = worldY.geology.resources[i];
+        const size = def ? ` (${word(scale('scales.deposit'), def.volume, 1).toLowerCase()})` : '';
+        return `${t(`resourceType.${rs.type}`)}${size} — *${t(`resourceState.${rs.phase}`)}*`;
+      })
+      .join('; ');
+    L.push(`- ${t('fields.resources')}: ${res}`);
   }
   const wl = worldY.wildlife;
   if (wl.predators >= 3 || wl.monsters >= 2) {
@@ -211,7 +213,7 @@ export function buildDossier(
   L.push('');
   L.push(`### ${t('dossier.polityTitle')}`);
   L.push(
-    `- ${t(`sovereignty.${worldY.polity.sovereignty}`)} · ${t('fields.taxBurden')}: ${word(scale('scales.tax'), worldY.polity.taxBurden, 0)} · ${t('fields.borderProximity')}: ${word(scale('scales.borderProximity'), worldY.polity.borderProximity, 1)}`,
+    `- ${t(`sovereignty.${worldY.polity.sovereignty}`)} · ${t('fields.governance')}: ${t(`governance.${worldY.polity.governance}`)} · ${t('fields.taxBurden')}: ${word(scale('scales.tax'), worldY.polity.taxBurden, 0)} · ${t('fields.borderProximity')}: ${word(scale('scales.borderProximity'), worldY.polity.borderProximity, 1)}`,
   );
 
   return L.join('\n');

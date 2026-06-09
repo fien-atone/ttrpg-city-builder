@@ -104,6 +104,7 @@ export function ConfigPanel({ config, dispatch }: Props) {
 
       <DomainSection title={t('domains.polity')} presetOptions={presetOpts('polity')} onPreset={onPreset('polity')}>
         <SelectField label={t('fields.sovereignty')} value={config.polity.sovereignty} options={opts('sovereignty', ['independent', 'vassal', 'colony', 'protectorate'])} onChange={(v) => set('polity.sovereignty', v)} />
+        <SelectField label={t('fields.governance')} value={config.polity.governance} options={opts('governance', ['none', 'elder', 'council', 'lord', 'guild', 'temple'])} onChange={(v) => set('polity.governance', v)} />
         <RangeField label={t('fields.borderProximity')} value={config.polity.borderProximity} min={1} max={5} labels={scale('scales.borderProximity')} onChange={(v) => set('polity.borderProximity', v)} />
         <RangeField label={t('fields.polStability')} value={config.polity.stability} min={1} max={5} labels={scale('scales.authority')} onChange={(v) => set('polity.stability', v)} />
         <RangeField label={t('fields.taxBurden')} value={config.polity.taxBurden} min={0} max={5} labels={scale('scales.tax')} onChange={(v) => set('polity.taxBurden', v)} />

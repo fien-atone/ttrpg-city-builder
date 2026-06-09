@@ -1,5 +1,6 @@
 import type { WorldConfig } from '../domain/types';
 import { CONFIG_VERSION, defaultWorldConfig } from '../domain/config';
+import { RESOURCE_VALUE } from '../domain/config/geology';
 
 const STORAGE_KEY = 'settlement-sim.world';
 
@@ -10,7 +11,15 @@ function reconcile(raw: Partial<WorldConfig>): WorldConfig {
     ...raw,
     version: CONFIG_VERSION,
     geography: { ...defaultWorldConfig.geography, ...raw.geography },
-    geology: { ...defaultWorldConfig.geology, ...raw.geology },
+    geology: {
+      ...defaultWorldConfig.geology,
+      ...raw.geology,
+      // pre-value saves: backfill each resource's value from its type
+      resources: (raw.geology?.resources ?? defaultWorldConfig.geology.resources).map((r) => ({
+        ...r,
+        value: typeof r.value === 'number' ? r.value : RESOURCE_VALUE[r.type],
+      })),
+    },
     climate: {
       ...defaultWorldConfig.climate,
       ...raw.climate,

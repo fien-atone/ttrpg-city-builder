@@ -412,7 +412,7 @@ canvas.chart {
   grid-template-columns: 1.4fr 0.8fr 0.8fr 1fr auto;
 }
 .editor-row.res {
-  grid-template-columns: 1.4fr 0.7fr 0.7fr 0.7fr auto;
+  grid-template-columns: 1.3fr 0.6fr 0.6fr 0.6fr 0.6fr auto;
 }
 .editor-row.kf {
   grid-template-columns: 0.9fr 0.9fr 1.2fr auto;
@@ -424,7 +424,8 @@ canvas.chart {
   text-transform: uppercase;
 }
 .editor-head.res {
-  grid-template-columns: 1.4fr 0.7fr 0.7fr 0.7fr auto;
+  grid-template-columns: 1.3fr 0.6fr 0.6fr 0.6fr 0.6fr auto;
+  font-size: 9.5px;
 }
 .editor-row input,
 .editor-row select {

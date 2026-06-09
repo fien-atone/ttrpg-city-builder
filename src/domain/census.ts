@@ -81,7 +81,8 @@ export function deriveCensus(point: YearState, world: WorldConfig): Census {
   const lev = buildLevers(worldY, {
     year: point.year,
     population: pop,
-    reserves: Infinity,
+    reserves: 0,
+    miningDraw: 0,
     development: point.development,
     prosperity: point.prosperity,
     capabilities: point.capabilities,

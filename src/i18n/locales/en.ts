@@ -63,6 +63,7 @@ export const en = {
     monsters: 'Monsters',
     aggression: 'Aggression',
     sovereignty: 'Sovereignty',
+    governance: 'Governance',
     borderProximity: 'Border proximity',
     polStability: 'Central authority',
     taxBurden: 'Tax burden',
@@ -88,7 +89,7 @@ export const en = {
     skill: 'Share of artisans/professionals — speeds crafts, services & advanced buildings',
     resources: 'Volume = how much · Access = how reachable · Depth = how deep',
   },
-  resfields: { volume: 'Volume', access: 'Access', depth: 'Depth' },
+  resfields: { volume: 'Volume', access: 'Access', depth: 'Depth', value: 'Value' },
   hazards: { label: 'Extra weather', winters: 'Harsh winters', storms: 'Storms', droughts: 'Droughts' },
   support: {
     investment: 'Startup investment',
@@ -140,6 +141,14 @@ export const en = {
   },
   neighborType: { hamlet: 'Hamlet', town: 'Town', city: 'City', capital: 'Capital', fort: 'Fort', port: 'Port' },
   relation: { allied: 'Allied', friendly: 'Friendly', neutral: 'Neutral', rival: 'Rival', hostile: 'Hostile' },
+  governance: {
+    none: 'No one in charge',
+    elder: 'Village elder',
+    council: 'Town council',
+    lord: 'Resident lord',
+    guild: 'Guild compact',
+    temple: 'Temple rule',
+  },
   sovereignty: {
     independent: 'Independent',
     vassal: 'Vassal',
@@ -233,6 +242,7 @@ export const en = {
     exhausted: 'Resource exhausted',
     collapse: 'Settlement abandoned',
     arrival: 'Skilled newcomers',
+    discovery: 'Deposit discovered',
   },
   cards: {
     population: 'Population',
@@ -265,6 +275,7 @@ export const en = {
     professionsTitle: 'Trades & callings',
     workforce: 'Working adults',
     capabilitiesTitle: 'Know-how',
+    depositsTitle: 'Beneath the soil',
   },
   foodChannel: {
     crops: 'Crops',
@@ -337,6 +348,7 @@ export const en = {
     eventLogTitle: 'Event log',
     has: 'present',
     from: '≥ {n}',
+    needsCap: 'needs: {sector}',
     replaced: 'replaced',
     noEvents: 'no upheavals yet',
     yearN: 'year {n}:',
@@ -366,6 +378,12 @@ export const en = {
     magnitude: ['Faint', 'Minor', 'Moderate', 'Major', 'Drastic'],
     deposit: ['Meagre', 'Poor', 'Average', 'Rich', 'Vast'],
     capability: ['None', 'Rudiments', 'Journeymen', 'Adept', 'Masters'],
+  },
+  resourceState: {
+    unknown: 'undiscovered',
+    dormant: 'left untouched',
+    worked: 'being worked',
+    depleted: 'mined out',
   },
   presetNames: {
     coastal_trade: 'Coastal trade',

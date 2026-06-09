@@ -11,7 +11,8 @@ export type EventKind =
   | 'fire'
   | 'exhausted'
   | 'collapse'
-  | 'arrival'; // skilled newcomers unlock a dormant opportunity
+  | 'arrival' // skilled newcomers unlock a dormant opportunity
+  | 'discovery'; // a resource deposit is found and recognised
 
 export type Sector =
   | 'farming'
@@ -57,8 +58,17 @@ export type ResourceType = 'iron' | 'copper' | 'gold' | 'silver' | 'gems' | 'coa
 export interface Resource {
   type: ResourceType;
   volume: number; // 1..5 total reserve
-  accessibility: number; // 1..5 (low = hidden / deep / hard to extract)
-  depth: number; // 1..5 (deep = needs more labour / tech)
+  accessibility: number; // 1..5 — how easy to FIND (outcrops vs hidden veins)
+  depth: number; // 1..5 — how hard to EXTRACT (labour / equipment / skill)
+  value: number; // 1..5 — rarity / price: high value justifies hard extraction
+}
+
+/** Lifecycle of one deposit in the running simulation. */
+export type ResourcePhase = 'unknown' | 'dormant' | 'worked' | 'depleted';
+export interface ResourceState {
+  type: ResourceType;
+  phase: ResourcePhase;
+  reserveFrac: number; // 0..1 of the initial reserve left
 }
 export interface Geology {
   fertility: number; // 1..5 soil
@@ -116,8 +126,11 @@ export interface Neighbor {
 }
 
 export type Sovereignty = 'independent' | 'vassal' | 'colony' | 'protectorate';
+/** Who runs the settlement day to day — decides whether specialists can be INVITED. */
+export type GovernanceId = 'none' | 'elder' | 'council' | 'lord' | 'guild' | 'temple';
 export interface Polity {
   sovereignty: Sovereignty;
+  governance: GovernanceId;
   borderProximity: number; // 1 (deep interior) .. 5 (right on the frontier)
   stability: number; // 1..5 — central authority's strength
   taxBurden: number; // 0..5 — levies that push people out / drain capital
@@ -223,7 +236,8 @@ export interface Levers {
 export interface StateSnapshot {
   year: number;
   population: number;
-  reserves: number; // remaining resource reserve (Infinity if none)
+  reserves: number; // total remaining across non-depleted deposits (0 if none)
+  miningDraw: number; // current extraction intensity from worked deposits
   development: number; // 0..1 accumulated infrastructure stock
   prosperity: number; // 0..2 economic output per capita
   capabilities: Record<Sector, number>; // 0..1 — what the settlement knows how to do
@@ -239,6 +253,7 @@ export interface BuildingDef {
   tag: BuildingTag;
   needMagic?: number; // requires regional magic >= n
   needTech?: boolean; // suppressed in strongly magical regions
+  needCap?: { sector: Sector; level: number }; // requires settlement know-how (a temple needs a priest)
   replacedBy?: string; // id of the building that supersedes this one
   countPer?: number; // one more of these per N residents
 }
@@ -250,6 +265,7 @@ export interface BuildingState {
   unlocked: boolean;
   replaced: boolean; // superseded by a later building
   count: number; // how many the settlement has
+  missingCap?: Sector; // population is there, but nobody knows how / no one to run it
 }
 
 export interface Composition {
@@ -264,6 +280,7 @@ export interface SimEvent {
   kind: EventKind;
   severity: number; // 0..1 fraction lost (0 for non-population events)
   sector?: Sector; // for 'arrival': which know-how the newcomers brought
+  resource?: ResourceType; // for 'discovery' / 'exhausted': which deposit
 }
 
 export interface YearState {
@@ -278,6 +295,7 @@ export interface YearState {
   development: number; // 0..1 infrastructure stock
   prosperity: number; // 0..2 output per capita
   capabilities: Record<Sector, number>; // 0..1 know-how per sector
+  resources: ResourceState[]; // per-deposit lifecycle at this year
   buildings: BuildingState[];
   composition: Composition;
   sectors: Record<Sector, number>; // normalized shares summing to 1

@@ -1,6 +1,7 @@
 import type { Dispatch } from 'react';
 import type { Resource, ResourceType, WorldConfig } from '../domain/types';
 import type { ConfigAction } from '../state/config';
+import { RESOURCE_VALUE } from '../domain/config/geology';
 import { useI18n } from '../i18n/I18nContext';
 
 const TYPES: ResourceType[] = ['iron', 'copper', 'gold', 'silver', 'gems', 'coal', 'stone', 'salt', 'timber'];
@@ -10,7 +11,13 @@ const d5 = () => 1 + Math.floor(Math.random() * 5);
 function randomResources(): Resource[] {
   const n = 1 + Math.floor(Math.random() * 3);
   const pool = [...TYPES].sort(() => Math.random() - 0.5).slice(0, n);
-  return pool.map((type) => ({ type, volume: d5(), accessibility: d5(), depth: d5() }));
+  return pool.map((type) => ({
+    type,
+    volume: d5(),
+    accessibility: d5(),
+    depth: d5(),
+    value: Math.min(5, Math.max(1, RESOURCE_VALUE[type] + Math.floor(Math.random() * 3) - 1)),
+  }));
 }
 
 interface Props {
@@ -38,6 +45,7 @@ export function ResourceEditor({ config, dispatch }: Props) {
         <span>{t('resfields.volume')}</span>
         <span>{t('resfields.access')}</span>
         <span>{t('resfields.depth')}</span>
+        <span>{t('resfields.value')}</span>
         <span />
       </div>
       {rs.map((r, i) => (
@@ -52,6 +60,7 @@ export function ResourceEditor({ config, dispatch }: Props) {
           <input type="number" min={1} max={5} value={r.volume} onChange={(e) => set(i, 'volume', Number(e.target.value))} />
           <input type="number" min={1} max={5} value={r.accessibility} onChange={(e) => set(i, 'accessibility', Number(e.target.value))} />
           <input type="number" min={1} max={5} value={r.depth} onChange={(e) => set(i, 'depth', Number(e.target.value))} />
+          <input type="number" min={1} max={5} value={r.value} onChange={(e) => set(i, 'value', Number(e.target.value))} />
           <button className="mini" onClick={() => setList(rs.filter((_, j) => j !== i))}>
             {t('actions.remove')}
           </button>
@@ -60,7 +69,7 @@ export function ResourceEditor({ config, dispatch }: Props) {
       <div className="btnrow">
         <button
           className="mini add"
-          onClick={() => setList([...rs, { type: 'iron', volume: 3, accessibility: 3, depth: 2 }])}
+          onClick={() => setList([...rs, { type: 'iron', volume: 3, accessibility: 3, depth: 2, value: RESOURCE_VALUE.iron }])}
         >
           + {t('actions.add')}
         </button>
