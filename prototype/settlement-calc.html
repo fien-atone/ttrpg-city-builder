@@ -1,0 +1,497 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Калькулятор роста поселения · TTRPG</title>
+<style>
+  :root{
+    --bg:#15171c; --panel:#1d2128; --panel2:#242a33; --line:#323a46;
+    --txt:#e8ecf2; --muted:#9aa6b6; --accent:#e0a458; --accent2:#5aa7e0;
+    --good:#5ec27a; --bad:#e0625a; --mag:#b07ae0;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--txt);
+    font:14px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+  h1{font-size:18px;margin:0 0 2px}
+  h2{font-size:12px;text-transform:uppercase;letter-spacing:.06em;
+    color:var(--muted);margin:18px 0 8px;font-weight:600}
+  .wrap{display:grid;grid-template-columns:340px 1fr;gap:0;min-height:100vh}
+  .controls{background:var(--panel);padding:16px 18px 40px;
+    border-right:1px solid var(--line);overflow-y:auto;max-height:100vh}
+  .view{padding:18px 22px}
+  .sub{color:var(--muted);font-size:12px;margin-bottom:8px}
+
+  .field{margin-bottom:13px}
+  .field label{display:flex;justify-content:space-between;
+    font-size:12.5px;margin-bottom:4px}
+  .field label b{color:var(--accent);font-variant-numeric:tabular-nums}
+  input[type=range]{width:100%;accent-color:var(--accent)}
+  select,input[type=number]{width:100%;background:var(--panel2);
+    color:var(--txt);border:1px solid var(--line);border-radius:6px;
+    padding:6px 8px;font-size:13px}
+  .row2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .chk{display:flex;align-items:center;gap:8px;font-size:13px;margin-bottom:8px;cursor:pointer}
+  .chk input{accent-color:var(--accent)}
+  .hint{font-size:11px;color:var(--muted);margin-top:2px}
+
+  /* view */
+  .toprow{display:flex;justify-content:space-between;align-items:flex-end;
+    flex-wrap:wrap;gap:12px;margin-bottom:14px}
+  .yearbox{display:flex;align-items:baseline;gap:10px}
+  .yearbox .y{font-size:34px;font-weight:700;color:var(--accent)}
+  .yearbox .yl{color:var(--muted);font-size:13px}
+
+  .timeline{margin:6px 0 18px}
+  .timeline input{width:100%;accent-color:var(--accent2)}
+
+  .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));
+    gap:10px;margin-bottom:18px}
+  .card{background:var(--panel);border:1px solid var(--line);
+    border-radius:9px;padding:11px 13px}
+  .card .k{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
+  .card .v{font-size:22px;font-weight:700;margin-top:2px;font-variant-numeric:tabular-nums}
+  .card .v small{font-size:13px;color:var(--muted);font-weight:400}
+  .phase-pill{display:inline-block;padding:2px 9px;border-radius:20px;
+    font-size:12px;font-weight:600;background:var(--panel2);border:1px solid var(--line)}
+
+  canvas{width:100%;height:300px;background:var(--panel);
+    border:1px solid var(--line);border-radius:10px;display:block}
+
+  .legend{display:flex;gap:16px;font-size:12px;color:var(--muted);margin:8px 2px 0;flex-wrap:wrap}
+  .legend span{display:inline-flex;align-items:center;gap:6px}
+  .swatch{width:11px;height:11px;border-radius:3px;display:inline-block}
+
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-top:18px}
+  @media(max-width:1100px){.grid2{grid-template-columns:1fr}}
+
+  .blist{list-style:none;padding:0;margin:0}
+  .blist li{display:flex;justify-content:space-between;gap:10px;
+    padding:6px 0;border-bottom:1px solid var(--line);font-size:13px}
+  .blist li:last-child{border:0}
+  .blist .at{color:var(--muted);font-variant-numeric:tabular-nums;font-size:12px}
+  .b-on{color:var(--good)} .b-off{color:var(--muted);opacity:.55}
+  .b-mag{color:var(--mag)} .b-tech{color:var(--accent2)}
+
+  .bars .bar{margin-bottom:9px}
+  .bars .bl{display:flex;justify-content:space-between;font-size:12px;margin-bottom:3px}
+  .bars .track{height:8px;background:var(--panel2);border-radius:5px;overflow:hidden}
+  .bars .fill{height:100%;border-radius:5px}
+
+  .shocks{font-size:12.5px;color:var(--muted)}
+  .shocks .ev{padding:3px 0}
+  .shocks .ev b{color:var(--bad)}
+  .note{font-size:11.5px;color:var(--muted);margin-top:10px}
+  .seedrow{display:flex;gap:8px;align-items:center;margin-top:4px}
+  .seedrow button{background:var(--panel2);color:var(--txt);border:1px solid var(--line);
+    border-radius:6px;padding:6px 10px;cursor:pointer;font-size:12px}
+  .seedrow button:hover{border-color:var(--accent)}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- ============ CONTROLS ============ -->
+  <div class="controls">
+    <h1>Рост поселения</h1>
+    <div class="sub">Модель логистического роста + миграция · TTRPG-песочница</div>
+
+    <h2>Старт</h2>
+    <div class="field">
+      <label>Стартовое население <b id="v_pop0">80</b></label>
+      <input type="range" id="pop0" min="5" max="500" value="80" step="5">
+    </div>
+    <div class="field">
+      <label>Горизонт, лет <b id="v_years">120</b></label>
+      <input type="range" id="years" min="20" max="400" value="120" step="10">
+    </div>
+    <div class="field">
+      <label>Тип основания</label>
+      <select id="archetype">
+        <option value="homestead">Хутор / выселки</option>
+        <option value="village" selected>Деревня-основание (лорд)</option>
+        <option value="fort">Форт / гарнизон</option>
+        <option value="mine">Рудник / промысел (гильдия)</option>
+        <option value="mission">Миссия / обитель (орден)</option>
+      </select>
+      <div class="hint" id="archHint"></div>
+    </div>
+
+    <h2>Несущая ёмкость (потолок K)</h2>
+    <div class="field">
+      <label>Плодородие земли <b id="v_fert">3</b>/5</label>
+      <input type="range" id="fert" min="1" max="5" value="3">
+    </div>
+    <div class="field">
+      <label>Вода <b id="v_water">3</b>/5</label>
+      <input type="range" id="water" min="1" max="5" value="3">
+    </div>
+    <div class="field">
+      <label>Транспорт / связь <b id="v_trade">2</b>/5</label>
+      <input type="range" id="trade" min="1" max="5" value="2">
+      <div class="hint">Река/порт/тракт → можно завозить еду, потолок резко выше</div>
+    </div>
+    <div class="field">
+      <label>Безопасность <b id="v_safe">3</b>/5</label>
+      <input type="range" id="safe" min="1" max="5" value="3">
+    </div>
+    <div class="field">
+      <label>Санитария <b id="v_san">2</b>/5</label>
+      <input type="range" id="san" min="1" max="5" value="2">
+      <div class="hint">Низкая → скрытая «городская смертность»</div>
+    </div>
+
+    <h2>Темп</h2>
+    <div class="field">
+      <label>Привлекательность для мигрантов <b id="v_attr">3</b>/5</label>
+      <input type="range" id="attr" min="0" max="5" value="3">
+    </div>
+    <div class="field">
+      <label>Капитал спонсора <b id="v_cap">3</b>/5</label>
+      <input type="range" id="cap" min="0" max="5" value="3">
+      <div class="hint">Сжимает «детство» поселения, льготы N лет</div>
+    </div>
+
+    <h2>Магия и технология</h2>
+    <div class="field">
+      <label>Уровень магии региона <b id="v_mag">2</b>/5</label>
+      <input type="range" id="mag" min="0" max="5" value="2">
+      <div class="hint">Лечебная магия → ниже смертность, выше K</div>
+    </div>
+    <div class="field">
+      <label>Баланс <b id="v_bal">Поровну</b></label>
+      <input type="range" id="bal" min="0" max="100" value="50">
+      <div class="hint">← Технология · · · Магия →</div>
+    </div>
+
+    <h2>События</h2>
+    <label class="chk"><input type="checkbox" id="shocksOn" checked> Случайные шоки (чума/война/неурожай)</label>
+    <label class="chk"><input type="checkbox" id="resourceCap"> Исчерпаемый ресурс (рудник выработается)</label>
+    <div class="seedrow">
+      <span class="hint">Зерно ГСЧ:</span>
+      <input type="number" id="seed" value="42" style="width:80px">
+      <button id="reroll">🎲 Заново</button>
+    </div>
+    <div class="note">Модель — для прикидки динамики на столе, не симулятор реальности. Числа намеренно «играбельные».</div>
+  </div>
+
+  <!-- ============ VIEW ============ -->
+  <div class="view">
+    <div class="toprow">
+      <div class="yearbox">
+        <span class="y" id="curYear">0</span><span class="yl">год</span>
+        <span class="phase-pill" id="curPhase">—</span>
+      </div>
+      <div class="legend">
+        <span><i class="swatch" style="background:var(--accent)"></i>Население</span>
+        <span><i class="swatch" style="background:var(--line)"></i>Потолок K</span>
+        <span><i class="swatch" style="background:var(--bad)"></i>Шок</span>
+        <span><i class="swatch" style="background:var(--accent2)"></i>выбранный год</span>
+      </div>
+    </div>
+
+    <div class="timeline">
+      <input type="range" id="scrub" min="0" max="120" value="0">
+    </div>
+
+    <div class="cards" id="cards"></div>
+
+    <canvas id="chart"></canvas>
+
+    <div class="grid2">
+      <div>
+        <h2>Строения / срез на выбранный год</h2>
+        <ul class="blist" id="buildings"></ul>
+      </div>
+      <div>
+        <h2>Что ограничивает рост сейчас</h2>
+        <div class="bars" id="limiters"></div>
+        <h2>Лог событий</h2>
+        <div class="shocks" id="eventlog"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+//// ---------- утилиты ----------
+const $ = id => document.getElementById(id);
+const clamp = (x,a,b)=>Math.min(b,Math.max(a,x));
+const fmt = n => Math.round(n).toLocaleString('ru-RU');
+
+// детерминированный ГСЧ (mulberry32)
+function rng(seed){let a=seed>>>0;return function(){a|=0;a=a+0x6D2B79F5|0;
+  let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;
+  return ((t^t>>>14)>>>0)/4294967296;};}
+
+//// ---------- архетипы ----------
+const ARCH = {
+  homestead:{pop:15, attr:-1, cap:-2, baseR:1.0, hint:"Растёт почти только миграцией; маленький старт."},
+  village:  {pop:80, attr:0,  cap:0,  baseR:1.0, hint:"Надел земли и налоговые льготы от лорда."},
+  fort:     {pop:60, attr:-1, cap:+1, baseR:0.4, hint:"Население искусственное, плохо самовоспроизводится."},
+  mine:     {pop:120,attr:+1, cap:0,  baseR:0.9, hint:"Завозное снабжение; уязвим к исчерпанию ресурса."},
+  mission:  {pop:25, attr:+1, cap:-1, baseR:0.8, hint:"Растёт обращением и паломниками."}
+};
+
+//// ---------- здания: порог по населению + тип ----------
+const BUILDINGS = [
+  {n:"Времянки / частокол",       at:0,    t:""},
+  {n:"Колодец / выход к воде",     at:10,   t:""},
+  {n:"Общий амбар",               at:30,   t:""},
+  {n:"Кузница",                   at:40,   t:""},
+  {n:"Мельница (вода/ветер)",      at:60,   t:"tech"},
+  {n:"Святилище / часовня",        at:50,   t:""},
+  {n:"Постоянный дом мага",        at:90,   t:"mag", needMag:2},
+  {n:"Еженедельный рынок",         at:160,  t:""},
+  {n:"Каменная церковь",          at:250,  t:""},
+  {n:"Мост",                      at:300,  t:""},
+  {n:"Дом старосты / малый донжон",at:350,  t:""},
+  {n:"Постоялый двор",            at:500,  t:""},
+  {n:"Деревянные стены + ров",     at:600,  t:""},
+  {n:"Гильдейский дом",           at:900,  t:""},
+  {n:"Мануфактура / водяные колёса",at:1200, t:"tech", needTech:true},
+  {n:"Водный алтарь (замена акведука)",at:1200,t:"mag", needMag:3},
+  {n:"Каменные стены",            at:2000, t:""},
+  {n:"Ратуша / чеканка",          at:2500, t:""},
+  {n:"Госпиталь / лазарет магов",  at:3000, t:"mag", needMag:2},
+  {n:"Акведук / канализация",      at:4000, t:"tech"},
+  {n:"Собор",                     at:5000, t:""},
+  {n:"Университет",               at:7000, t:""},
+];
+
+function phaseOf(p){
+  if(p<30)  return ["Лагерь","#8a93a3"];
+  if(p<150) return ["Хутор / деревушка","#c98a4a"];
+  if(p<600) return ["Деревня / городок","#d0a24a"];
+  if(p<5000)return ["Город","#6aa8e0"];
+  return ["Крупный город","#b07ae0"];
+}
+
+//// ---------- симуляция ----------
+let SIM = null;
+
+function simulate(){
+  const a = ARCH[$('archetype').value];
+  const years = +$('years').value;
+  const fert=+$('fert').value, water=+$('water').value, trade=+$('trade').value,
+        safe=+$('safe').value, san=+$('san').value,
+        attr=+$('attr').value+a.attr, cap=+$('cap').value+a.cap,
+        mag=+$('mag').value, bal=+$('bal').value/100; // 0=tech,1=magic
+  const shocksOn=$('shocksOn').checked, resCap=$('resourceCap').checked;
+  const seed=+$('seed').value||1;
+  const r=rng(seed);
+
+  // потолок K: еда (плодородие×вода) масштабируется транспортом, безопасностью, санитарией, магией
+  const food = fert*water;                       // 1..25
+  const tradeMult = 1 + (trade-1)*0.9;           // 1..4.6  — связь резко поднимает потолок
+  const magBoostK = 1 + mag*0.10;                // лечебная/урожайная магия
+  let K = 40 * food * tradeMult * (0.6+safe*0.12) * (0.55+san*0.12) * magBoostK;
+  K = clamp(K, 60, 60000);
+
+  // базовый темп
+  let baseR = 0.012 * a.baseR;                   // 1.2% «золотое окно» как потолок естественного
+  // миграция как доля от разрыва до K
+  const migK = 0.02 + attr*0.012 + cap*0.006;
+  // смертность-модификатор: плохая санитария режет, магия лечит
+  const sanPenalty = (3-san)*0.004;              // при san=1 → +0.8%/год смертности
+  const magHeal = mag*0.0035;
+
+  const pts=[]; const events=[]; let pop=a.pop;
+  // capital boost: первые годы спонсор докидывает (сжатие детства)
+  const capYears = cap>0 ? Math.round(cap*6) : 0;
+
+  // ресурс (для рудника): запас, истощается ~ пропорц. населению
+  let reserve = resCap ? K*8 : Infinity;
+  let exhaustedAt = null;
+
+  for(let y=0;y<=years;y++){
+    let Ky = K;
+    if(resCap){
+      const ratio = clamp(reserve/(K*8),0,1);
+      Ky = clamp(60 + (K-60)*ratio, 60, K);     // потолок падает по мере истощения
+      reserve -= pop*0.9;
+      if(reserve<=0 && !exhaustedAt){exhaustedAt=y; events.push({y,txt:"Ресурс исчерпан — город хиреет",bad:true});}
+    }
+
+    const phase = phaseOf(pop)[0];
+    const buildings = BUILDINGS.filter(b=>{
+      if(pop<b.at) return false;
+      if(b.needMag && mag<b.needMag) return false;
+      if(b.needTech && bal>0.6) return false;   // в сильно «магических» регионах техника глохнет
+      if(b.t==="tech" && bal>0.75) return false;
+      return true;
+    });
+
+    pts.push({y, pop, K:Ky, phase, buildings:buildings.map(b=>b.n),
+              allBuild:BUILDINGS.map(b=>({...b, on: buildings.includes(b)}))});
+
+    if(y===years) break;
+
+    // --- рост за год ---
+    const capBoost = y<capYears ? (0.015*cap) : 0;
+    const natural = (baseR + magHeal - sanPenalty) * pop * (1 - pop/Ky);
+    const migration = pop<Ky ? migK*(Ky-pop)*0.06 + capBoost*pop : -0.01*(pop-Ky);
+    let dpop = natural + migration;
+
+    // --- шоки ---
+    if(shocksOn){
+      const roll=r();
+      // вероятность события ~ растёт со скученностью (плохая санитария)
+      const pEvent = 0.04 + (pop>800?0.03:0) + (3-san)*0.012;
+      if(roll<pEvent){
+        const kind=r();
+        let sev, name;
+        if(kind<0.4){sev=0.08+r()*0.22; name="Эпидемия"; sev*=(1- mag*0.08);}
+        else if(kind<0.7){sev=0.05+r()*0.18; name="Неурожай"; sev*=(1.3-fert*0.08);}
+        else if(kind<0.9){sev=0.10+r()*0.20; name="Набег / война"; sev*=(1.4-safe*0.12);}
+        else {sev=0.04+r()*0.08; name="Пожар"; }
+        sev=clamp(sev,0,0.55);
+        dpop -= pop*sev;
+        events.push({y:y+1, txt:`${name} −${Math.round(sev*100)}%`, bad:true});
+      }
+    }
+    pop = Math.max(2, pop+dpop);
+  }
+
+  // финальный темп каждой точки (для среза)
+  for(let i=0;i<pts.length;i++){
+    const prev = i>0?pts[i-1].pop:pts[i].pop;
+    pts[i].growth = (pts[i].pop-prev)/Math.max(prev,1);
+  }
+
+  SIM = {pts, events, K, years};
+  $('scrub').max = years;
+  if(+$('scrub').value>years) $('scrub').value=years;
+  draw();
+  renderSlice();
+}
+
+//// ---------- график ----------
+function draw(){
+  const cv=$('chart'); const dpr=window.devicePixelRatio||1;
+  const w=cv.clientWidth, h=cv.clientHeight;
+  cv.width=w*dpr; cv.height=h*dpr;
+  const ctx=cv.getContext('2d'); ctx.scale(dpr,dpr);
+  ctx.clearRect(0,0,w,h);
+  const pad={l:52,r:12,t:14,b:24};
+  const P=SIM.pts;
+  const maxPop=Math.max(...P.map(p=>Math.max(p.pop,p.K)))*1.05;
+  const X=y=> pad.l + (y/SIM.years)*(w-pad.l-pad.r);
+  const Y=v=> h-pad.b - (v/maxPop)*(h-pad.t-pad.b);
+
+  // сетка
+  ctx.strokeStyle="#2a313b"; ctx.fillStyle="#7c8694"; ctx.font="10px sans-serif";
+  ctx.lineWidth=1;
+  for(let i=0;i<=4;i++){
+    const v=maxPop*i/4, yy=Y(v);
+    ctx.beginPath();ctx.moveTo(pad.l,yy);ctx.lineTo(w-pad.r,yy);ctx.stroke();
+    ctx.fillText(fmt(v), 6, yy+3);
+  }
+  for(let g=0; g<=SIM.years; g+= Math.max(10,Math.round(SIM.years/10/10)*10)){
+    ctx.fillText(g, X(g)-4, h-8);
+  }
+
+  // K (потолок)
+  ctx.strokeStyle="#4a5462"; ctx.setLineDash([4,4]); ctx.lineWidth=1.5;
+  ctx.beginPath(); P.forEach((p,i)=> i?ctx.lineTo(X(p.y),Y(p.K)):ctx.moveTo(X(p.y),Y(p.K))); ctx.stroke();
+  ctx.setLineDash([]);
+
+  // население
+  ctx.strokeStyle="#e0a458"; ctx.lineWidth=2.4;
+  ctx.beginPath(); P.forEach((p,i)=> i?ctx.lineTo(X(p.y),Y(p.pop)):ctx.moveTo(X(p.y),Y(p.pop))); ctx.stroke();
+  // заливка
+  ctx.lineTo(X(SIM.years),Y(0)); ctx.lineTo(X(0),Y(0)); ctx.closePath();
+  ctx.fillStyle="rgba(224,164,88,.10)"; ctx.fill();
+
+  // шоки
+  SIM.events.forEach(e=>{
+    const p=P[Math.min(e.y,P.length-1)]; if(!p)return;
+    ctx.fillStyle=e.bad?"#e0625a":"#5ec27a";
+    ctx.beginPath(); ctx.arc(X(e.y),Y(p.pop),3.2,0,7); ctx.fill();
+  });
+
+  // курсор выбранного года
+  const sy=+$('scrub').value; const sp=P[sy]||P[P.length-1];
+  ctx.strokeStyle="#5aa7e0"; ctx.lineWidth=1.4;
+  ctx.beginPath(); ctx.moveTo(X(sy),pad.t); ctx.lineTo(X(sy),h-pad.b); ctx.stroke();
+  ctx.fillStyle="#5aa7e0"; ctx.beginPath(); ctx.arc(X(sy),Y(sp.pop),4.5,0,7); ctx.fill();
+}
+
+//// ---------- срез на выбранный год ----------
+function renderSlice(){
+  const sy=+$('scrub').value; const P=SIM.pts; const p=P[sy]||P[P.length-1];
+  $('curYear').textContent=sy;
+  const [ph,col]=phaseOf(p.pop);
+  const pill=$('curPhase'); pill.textContent=ph; pill.style.color=col; pill.style.borderColor=col;
+
+  // карточки
+  const peak=Math.max(...P.map(x=>x.pop));
+  const fill = p.pop/p.K;
+  $('cards').innerHTML=[
+    ['Население', fmt(p.pop)],
+    ['Темп/год', (p.growth*100).toFixed(2)+'<small>%</small>'],
+    ['Потолок K', fmt(p.K)],
+    ['Заполнен.', Math.round(fill*100)+'<small>%</small>'],
+    ['Зданий', p.allBuild.filter(b=>b.on).length+'<small>/'+p.allBuild.length+'</small>'],
+    ['Пик за период', fmt(peak)],
+  ].map(([k,v])=>`<div class="card"><div class="k">${k}</div><div class="v">${v}</div></div>`).join('');
+
+  // здания
+  $('buildings').innerHTML = p.allBuild.map(b=>{
+    const cls = b.on ? (b.t==='mag'?'b-mag':b.t==='tech'?'b-tech':'b-on') : 'b-off';
+    const tag = b.t==='mag'?' ✦':b.t==='tech'?' ⚙':'';
+    return `<li class="${cls}"><span>${b.on?'●':'○'} ${b.n}${tag}</span>
+            <span class="at">${b.on?'есть':'от '+fmt(b.at)}</span></li>`;
+  }).join('');
+
+  // лимитеры — что ближе всего держит потолок
+  const fert=+$('fert').value,water=+$('water').value,trade=+$('trade').value,
+        safe=+$('safe').value,san=+$('san').value,mag=+$('mag').value;
+  const lim=[
+    ['Еда (плодородие×вода)', (fert*water)/25],
+    ['Транспорт / завоз', trade/5],
+    ['Безопасность', safe/5],
+    ['Санитария', san/5],
+    ['Магия (лечение/урожай)', mag/5],
+    ['Близость к потолку', clamp(fill,0,1)],
+  ];
+  $('limiters').innerHTML = lim.map(([n,v])=>{
+    const pct=Math.round(v*100);
+    const c = n.startsWith('Близость') ? (v>0.9?'#e0625a':v>0.6?'#e0a458':'#5ec27a')
+            : (v<0.34?'#e0625a':v<0.67?'#e0a458':'#5ec27a');
+    return `<div class="bar"><div class="bl"><span>${n}</span><span>${pct}%</span></div>
+            <div class="track"><div class="fill" style="width:${pct}%;background:${c}"></div></div></div>`;
+  }).join('');
+
+  // лог событий до выбранного года
+  const ev=SIM.events.filter(e=>e.y<=sy);
+  $('eventlog').innerHTML = ev.length
+    ? ev.slice(-12).map(e=>`<div class="ev"><b>год ${e.y}:</b> ${e.txt}</div>`).join('')
+    : '<div class="ev">пока без потрясений</div>';
+
+  draw();
+}
+
+//// ---------- привязки ----------
+const sliders=['pop0','years','fert','water','trade','safe','san','attr','cap','mag','bal'];
+const labelMap={pop0:'v_pop0',years:'v_years',fert:'v_fert',water:'v_water',
+  trade:'v_trade',safe:'v_safe',san:'v_san',attr:'v_attr',cap:'v_cap',mag:'v_mag'};
+function syncLabels(){
+  for(const k in labelMap) $(labelMap[k]).textContent=$(k).value;
+  const b=+$('bal').value;
+  $('v_bal').textContent = b<35?'Технология':b>65?'Магия':'Поровну';
+  $('archHint').textContent=ARCH[$('archetype').value].hint;
+}
+function onArch(){ $('pop0').value=ARCH[$('archetype').value].pop; syncLabels(); simulate(); }
+
+sliders.forEach(id=>$(id).addEventListener('input',()=>{syncLabels();simulate();}));
+$('archetype').addEventListener('change',onArch);
+['shocksOn','resourceCap','seed'].forEach(id=>$(id).addEventListener('input',simulate));
+$('reroll').addEventListener('click',()=>{$('seed').value=Math.floor(Math.random()*9999);simulate();});
+$('scrub').addEventListener('input',renderSlice);
+window.addEventListener('resize',draw);
+
+syncLabels(); simulate();
+</script>
+</body>
+</html>
