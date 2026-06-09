@@ -1,135 +1,217 @@
 import type {
-  SimParams,
   SimResult,
-  YearPoint,
+  YearState,
   SimEvent,
   BuildingState,
   EventKind,
+  WorldConfig,
+  Sector,
+  Designation,
+  DesignationChange,
+  Outcome,
 } from './types';
-import { ARCHETYPES } from './archetypes';
+import { buildLevers, capacityFrom, normalizeSectors } from './levers';
 import { BUILDINGS } from './buildings';
 import { phaseOf } from './phases';
 import { mulberry32 } from './rng';
+import { applySchedule } from './trajectory';
+import { initialReserve } from './config/geology';
+import { viabilityFloor } from './config/founders';
+import { deriveDesignation } from './designation';
+import { statusFor, evaluateMission } from './outcome';
 
 const clamp = (x: number, a: number, b: number) => Math.min(b, Math.max(a, x));
 
 /**
- * Pure, deterministic simulation. Same params → same result.
- *
- * Model: logistic growth  r·P·(1 − P/K)  + migration as a share of the gap to K.
- * Sanitation adds hidden "urban mortality"; magic lowers it and raises K; sponsor
- * capital compresses the early years; shocks are seeded so a run is reproducible.
+ * Pure, deterministic per-year evolution. Same config → same result.
+ * Each year: resolve schedule → build levers → capacity → growth (natural +
+ * migration + funding − shocks − raids) → update composition & sectors →
+ * status/collapse → emergent designation.
  */
-export function simulate(p: SimParams): SimResult {
-  const a = ARCHETYPES[p.archetype];
-  const attr = p.attractiveness + a.attr;
-  const cap = p.capital + a.cap;
-  const bal = p.balance / 100; // 0 = tech, 1 = magic
-  const rand = mulberry32(p.seed || 1);
+export function simulate(world: WorldConfig): SimResult {
+  const years = world.horizonYears;
+  const rand = mulberry32(world.seed || 1);
+  const floor = viabilityFloor(world.founders);
 
-  // ---- carrying capacity K -------------------------------------------------
-  const food = p.fertility * p.water; // 1..25
-  const tradeMult = 1 + (p.trade - 1) * 0.9; // links lift the ceiling hard
-  const magBoostK = 1 + p.magic * 0.1;
-  let K =
-    40 *
-    food *
-    tradeMult *
-    (0.6 + p.safety * 0.12) *
-    (0.55 + p.sanitation * 0.12) *
-    magBoostK;
-  K = clamp(K, 60, 60000);
+  // baseline capacity (year 0) to size the resource reserve
+  const baseLev = buildLevers(world, { year: 0, population: world.founders.count, reserves: Infinity });
+  const baseK = capacityFrom(baseLev);
+  let reserves = initialReserve(world.geology, baseK);
+  const reserves0 = reserves;
+  let reserveExhausted = false;
 
-  // ---- rates ---------------------------------------------------------------
-  const baseR = 0.012 * a.baseR; // natural-growth "golden window" cap
-  const migK = 0.02 + attr * 0.012 + cap * 0.006;
-  const sanPenalty = (3 - p.sanitation) * 0.004;
-  const magHeal = p.magic * 0.0035;
-  const capYears = cap > 0 ? Math.round(cap * 6) : 0;
+  let pop = world.founders.count;
+  let localsStock = pop;
+  let migrantsStock = 0;
+  let dependentFrac = clamp(world.founders.dependentsPct / 100, 0.05, 0.6);
 
-  let pop = p.pop0;
-  let reserve = p.resourceCap ? K * 8 : Infinity;
-  let exhaustedAt: number | null = null;
+  let prevDesignation: Designation | null = null;
+  let struggleStreak = 0;
+  let collapsed: Outcome['collapsed'] = null;
 
-  const points: YearPoint[] = [];
+  const points: YearState[] = [];
   const events: SimEvent[] = [];
+  const designationHistory: DesignationChange[] = [];
 
-  for (let y = 0; y <= p.years; y++) {
-    // effective ceiling this year (resource exhaustion pulls it down)
-    let Ky = K;
-    if (p.resourceCap) {
-      const ratio = clamp(reserve / (K * 8), 0, 1);
-      Ky = clamp(60 + (K - 60) * ratio, 60, K);
-      reserve -= pop * 0.9;
-      if (reserve <= 0 && exhaustedAt === null) {
-        exhaustedAt = y;
+  for (let y = 0; y <= years; y++) {
+    const worldY = applySchedule(world, y);
+    const lev = buildLevers(worldY, { year: y, population: pop, reserves });
+
+    let K = capacityFrom(lev);
+
+    // resource depletion: a mining draw fades as the seam runs out
+    if (Number.isFinite(reserves)) {
+      reserves -= pop * 0.9;
+      if (reserves <= 0 && !reserveExhausted) {
+        reserveExhausted = true;
         events.push({ year: y, kind: 'exhausted', severity: 0 });
+      }
+      if (reserves <= 0) {
+        lev.migrationPull *= 0.25;
+        lev.migrationPush += 1.5;
       }
     }
 
-    const buildings: BuildingState[] = BUILDINGS.map((b) => {
-      let unlocked = pop >= b.threshold;
-      if (unlocked && b.needMagic && p.magic < b.needMagic) unlocked = false;
-      if (unlocked && b.needTech && bal > 0.6) unlocked = false; // magic glut stifles tech
-      if (unlocked && b.tag === 'tech' && bal > 0.75) unlocked = false;
-      return { id: b.id, tag: b.tag, threshold: b.threshold, unlocked };
-    });
+    // ---- growth components ----
+    const net = lev.naturalGrowth + lev.magicHeal - lev.mortality;
+    const natural = net * pop * (1 - pop / K);
 
-    points.push({
-      year: y,
-      population: pop,
-      capacity: Ky,
-      phase: phaseOf(pop),
-      growth: 0, // filled in below
-      buildings,
-    });
+    const migK = 0.02 + lev.migrationPull * 0.012;
+    const inMig = pop < K ? migK * (K - pop) * 0.06 : 0;
+    const outMig = lev.migrationPush * 0.0018 * pop + (pop > K ? 0.01 * (pop - K) : 0);
+    const migration = inMig - outMig;
 
-    if (y === p.years) break;
+    const fundingGrowth = lev.funding > 0 ? lev.funding * 0.004 * pop * (1 - pop / K) : 0;
 
-    // ---- yearly delta ------------------------------------------------------
-    const capBoost = y < capYears ? 0.015 * cap : 0;
-    const natural = (baseR + magHeal - sanPenalty) * pop * (1 - pop / Ky);
-    const migration =
-      pop < Ky ? migK * (Ky - pop) * 0.06 + capBoost * pop : -0.01 * (pop - Ky);
-    let dpop = natural + migration;
+    // ---- raids: chronic attrition when pressure beats defence ----
+    const raidGap = Math.max(0, lev.raidPressure - lev.defense * 2);
+    const raidLoss = raidGap * 0.004 * pop;
 
-    // ---- shocks ------------------------------------------------------------
-    if (p.shocksEnabled) {
+    let dpop = natural + migration + fundingGrowth - raidLoss;
+
+    // ---- discrete shocks ----
+    if (worldY.shocksEnabled && !collapsed) {
       const roll = rand();
-      const pEvent =
-        0.04 + (pop > 800 ? 0.03 : 0) + (3 - p.sanitation) * 0.012;
+      const pEvent = 0.035 + (pop > 800 ? 0.025 : 0) + raidGap * 0.02 + (worldY.climate.harshness - 2) * 0.01;
       if (roll < pEvent) {
         const kind = rand();
         let sev: number;
         let ek: EventKind;
-        if (kind < 0.4) {
-          sev = (0.08 + rand() * 0.22) * (1 - p.magic * 0.08);
-          ek = 'plague';
-        } else if (kind < 0.7) {
-          sev = (0.05 + rand() * 0.18) * (1.3 - p.fertility * 0.08);
-          ek = 'famine';
-        } else if (kind < 0.9) {
-          sev = (0.1 + rand() * 0.2) * (1.4 - p.safety * 0.12);
+        const magic = worldY.arcana.magic;
+        if (raidGap > 0.5 && kind < 0.45) {
+          sev = (0.1 + rand() * 0.2) * (1 + raidGap * 0.2);
           ek = 'raid';
+        } else if (kind < 0.45) {
+          sev = (0.08 + rand() * 0.22) * (1 - magic * 0.08);
+          ek = 'plague';
+        } else if (kind < 0.78) {
+          sev = (0.05 + rand() * 0.18) * (1.3 - worldY.geology.fertility * 0.08);
+          ek = 'famine';
         } else {
           sev = 0.04 + rand() * 0.08;
           ek = 'fire';
         }
         sev = clamp(sev, 0, 0.55);
         dpop -= pop * sev;
-        events.push({ year: y + 1, kind: ek, severity: sev });
+        events.push({ year: y + 1 <= years ? y + 1 : y, kind: ek, severity: sev });
       }
     }
 
-    pop = Math.max(2, pop + dpop);
+    // ---- collapse handling ----
+    if (collapsed) {
+      dpop = -0.18 * pop; // an abandoned site bleeds out
+    }
+
+    let newPop = Math.max(0, pop + dpop);
+
+    // ---- composition: split residents into locals vs migrants ----
+    const births = Math.max(0, natural);
+    const inflow = Math.max(0, migration + fundingGrowth);
+    localsStock += births;
+    migrantsStock += inflow;
+    const matured = migrantsStock * 0.04; // migrants settle into locals over time
+    migrantsStock -= matured;
+    localsStock += matured;
+    const stockSum = localsStock + migrantsStock;
+    if (stockSum > 0) {
+      localsStock = (newPop * localsStock) / stockSum;
+      migrantsStock = (newPop * migrantsStock) / stockSum;
+    } else {
+      localsStock = newPop;
+      migrantsStock = 0;
+    }
+
+    dependentFrac += (0.32 - dependentFrac) * 0.05; // drift toward a steady age structure
+    const transients = lev.transientFlow * newPop;
+    const dependents = newPop * dependentFrac;
+
+    // ---- economic sectors (some scale with urbanization) ----
+    const w = { ...lev.sectorWeights };
+    const urban = Math.log10(Math.max(10, newPop));
+    w.services += urban * 2;
+    w.crafts += urban * 1.5;
+    const sectors = normalizeSectors(w);
+
+    // ---- status / viability ----
+    const prevPop = points.length > 0 ? points[points.length - 1].population : pop;
+    const growthRate = (newPop - prevPop) / Math.max(1, prevPop);
+    let status = collapsed ? 'abandoned' : statusFor(y, newPop, floor, K, growthRate);
+
+    if (!collapsed) {
+      if (newPop <= floor) struggleStreak += 1;
+      else struggleStreak = 0;
+      const starving = K < pop * 0.6;
+      if (newPop < 4 || struggleStreak >= 6 || (starving && newPop <= floor)) {
+        const reason = starving ? 'starvation' : lev.funding <= 0 && newPop <= floor ? 'unfunded' : 'depopulation';
+        collapsed = { year: y, reason };
+        status = 'abandoned';
+        events.push({ year: y, kind: 'collapse', severity: 0 });
+      }
+    }
+
+    // ---- emergent designation ----
+    const designation = deriveDesignation(sectors, worldY, newPop, prevDesignation);
+    if (designation !== prevDesignation) {
+      designationHistory.push({ year: y, designation });
+      prevDesignation = designation;
+    }
+
+    // ---- buildings (pop + arcana gating) ----
+    const magicLevel = worldY.arcana.magic;
+    const magicDominant = lev.flags.has('magic_dominant');
+    const techSuppressed = lev.flags.has('tech_suppressed');
+    const buildings: BuildingState[] = BUILDINGS.map((b) => {
+      let unlocked = newPop >= b.threshold;
+      if (unlocked && b.needMagic && magicLevel < b.needMagic) unlocked = false;
+      if (unlocked && b.needTech && magicDominant) unlocked = false;
+      if (unlocked && b.tag === 'tech' && techSuppressed) unlocked = false;
+      return { id: b.id, tag: b.tag, threshold: b.threshold, unlocked };
+    });
+
+    points.push({
+      year: y,
+      population: newPop,
+      capacity: K,
+      phase: phaseOf(newPop),
+      growth: growthRate,
+      status,
+      designation,
+      funding: lev.funding,
+      buildings,
+      composition: { locals: localsStock, migrants: migrantsStock, transients, dependents },
+      sectors,
+    });
+
+    pop = newPop;
+    void reserves0; // reserved for future depletion UI
   }
 
-  // year-over-year growth for the slice readout
-  for (let i = 0; i < points.length; i++) {
-    const prev = i > 0 ? points[i - 1].population : points[i].population;
-    points[i].growth = (points[i].population - prev) / Math.max(prev, 1);
-  }
+  const peak = points.reduce((m, p) => Math.max(m, p.population), 0);
+  const outcome: Outcome = {
+    finalStatus: points.length ? points[points.length - 1].status : 'founding',
+    collapsed,
+    mission: evaluateMission(points, world),
+  };
 
-  const peak = points.reduce((m, pt) => Math.max(m, pt.population), 0);
-  return { points, events, years: p.years, peak };
+  return { points, events, years, peak, outcome, designationHistory };
 }

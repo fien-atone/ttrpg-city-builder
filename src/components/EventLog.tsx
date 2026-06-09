@@ -6,9 +6,11 @@ interface Props {
   selectedYear: number;
 }
 
+const NO_SEVERITY = new Set(['exhausted', 'collapse']);
+
 export function EventLog({ events, selectedYear }: Props) {
   const { t } = useI18n();
-  const shown = events.filter((e) => e.year <= selectedYear).slice(-12);
+  const shown = events.filter((e) => e.year <= selectedYear).slice(-14);
 
   return (
     <div>
@@ -19,9 +21,8 @@ export function EventLog({ events, selectedYear }: Props) {
         ) : (
           shown.map((e, i) => (
             <div className="ev" key={`${e.year}-${i}`}>
-              <b>{t('slice.yearN', { n: e.year })}</b>{' '}
-              {t(`events.${e.kind}`)}
-              {e.kind !== 'exhausted' && ` −${Math.round(e.severity * 100)}%`}
+              <b>{t('slice.yearN', { n: e.year })}</b> {t(`events.${e.kind}`)}
+              {!NO_SEVERITY.has(e.kind) && ` −${Math.round(e.severity * 100)}%`}
             </div>
           ))
         )}

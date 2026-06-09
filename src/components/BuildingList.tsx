@@ -1,8 +1,8 @@
-import type { YearPoint } from '../domain/types';
+import type { YearState } from '../domain/types';
 import { TAG_GLYPH } from '../lib/ui';
 import { useI18n } from '../i18n/I18nContext';
 
-export function BuildingList({ point }: { point: YearPoint }) {
+export function BuildingList({ point }: { point: YearState }) {
   const { t, fmt } = useI18n();
   return (
     <div>

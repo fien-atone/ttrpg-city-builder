@@ -316,3 +316,203 @@ canvas.chart {
 .shocks .ev b {
   color: var(--bad);
 }
+
+/* ── domain sections ── */
+.domain {
+  border-top: 1px solid var(--line);
+  padding: 6px 0;
+}
+.domain-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  justify-content: space-between;
+}
+.domain-toggle {
+  background: none;
+  border: 0;
+  color: var(--txt);
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 0;
+}
+.caret {
+  transition: transform 0.12s;
+  color: var(--muted);
+}
+.caret.open {
+  transform: rotate(90deg);
+}
+.preset-select {
+  width: auto;
+  max-width: 130px;
+  font-size: 11px;
+  padding: 3px 6px;
+}
+.domain-body {
+  padding: 6px 0 10px;
+}
+.domain-body .field {
+  margin-bottom: 9px;
+}
+
+/* ── list editors ── */
+.editor {
+  font-size: 12px;
+}
+.editor-head,
+.editor-row {
+  display: grid;
+  gap: 5px;
+  align-items: center;
+  margin-bottom: 5px;
+}
+.editor-row {
+  grid-template-columns: 1.4fr 0.8fr 0.8fr 1fr auto;
+}
+.editor-row.res {
+  grid-template-columns: 1.4fr 0.7fr 0.7fr 0.7fr auto;
+}
+.editor-row.kf {
+  grid-template-columns: 0.9fr 0.9fr 1.2fr auto;
+}
+.editor-head {
+  grid-template-columns: 1fr 1fr 1fr auto;
+  color: var(--muted);
+  font-size: 10.5px;
+  text-transform: uppercase;
+}
+.editor-row input,
+.editor-row select {
+  padding: 4px 5px;
+  font-size: 12px;
+}
+button.mini {
+  background: var(--panel2);
+  color: var(--muted);
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  padding: 4px 7px;
+  font-size: 11px;
+  cursor: pointer;
+}
+button.mini:hover {
+  border-color: var(--accent);
+  color: var(--txt);
+}
+button.mini.add {
+  width: 100%;
+  margin-top: 3px;
+}
+
+/* ── top bar I/O ── */
+.iobar {
+  display: flex;
+  gap: 5px;
+}
+.iobar button {
+  background: var(--panel2);
+  color: var(--muted);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 4px 9px;
+  font-size: 11px;
+  cursor: pointer;
+}
+.iobar button:hover {
+  border-color: var(--accent);
+  color: var(--txt);
+}
+
+/* ── donuts ── */
+.donut-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 18px;
+  margin-top: 18px;
+}
+@media (max-width: 1100px) {
+  .donut-row {
+    grid-template-columns: 1fr;
+  }
+}
+.donut {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 12px 14px;
+}
+.donut-body {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.donut-svg {
+  width: 140px;
+  height: 140px;
+  flex: 0 0 140px;
+}
+.donut-center {
+  fill: var(--txt);
+  font-size: 13px;
+  font-weight: 600;
+}
+.donut-legend {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  flex: 1;
+  columns: 2;
+  column-gap: 14px;
+}
+.donut-legend li {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  padding: 2px 0;
+  break-inside: avoid;
+}
+.dl-label {
+  flex: 1;
+  color: var(--muted);
+}
+.dl-val {
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── outcome ── */
+.outcome {
+  margin-bottom: 6px;
+}
+.outcome-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 7px;
+  font-size: 13px;
+}
+.o-label {
+  color: var(--muted);
+}
+.o-text {
+  color: var(--muted);
+  font-size: 12.5px;
+}
+.o-text.good {
+  color: var(--good);
+}
+.o-text.bad {
+  color: var(--bad);
+}
+.inline-row {
+  display: flex;
+  gap: 8px;
+}
