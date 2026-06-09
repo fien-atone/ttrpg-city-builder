@@ -9,9 +9,10 @@ interface Props {
   onLoad: () => void;
   onExport: () => void;
   onImport: () => void;
+  onDossier: () => void;
 }
 
-export function TopBar({ point, onSave, onLoad, onExport, onImport }: Props) {
+export function TopBar({ point, onSave, onLoad, onExport, onImport, onDossier }: Props) {
   const { t } = useI18n();
   const phaseCol = PHASE_COLORS[point.phase];
   const statusCol = STATUS_COLORS[point.status];
@@ -34,6 +35,7 @@ export function TopBar({ point, onSave, onLoad, onExport, onImport }: Props) {
           <button onClick={onLoad}>{t('actions.load')}</button>
           <button onClick={onExport}>{t('actions.export')}</button>
           <button onClick={onImport}>{t('actions.import')}</button>
+          <button onClick={onDossier}>{t('actions.dossier')}</button>
         </div>
         <LanguageSwitcher />
       </div>

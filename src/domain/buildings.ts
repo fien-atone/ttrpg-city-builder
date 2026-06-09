@@ -17,6 +17,7 @@ export const BUILDINGS: BuildingDef[] = [
   { id: 'mage_house', threshold: 90, tag: 'magic', needMagic: 2 },
   { id: 'houses', threshold: 120, tag: 'plain' },
   { id: 'market', threshold: 160, tag: 'plain' },
+  { id: 'bathhouse', threshold: 220, tag: 'plain', countPer: 2500 },
   { id: 'stone_church', threshold: 250, tag: 'plain' },
   { id: 'bridge', threshold: 300, tag: 'plain' },
   { id: 'manor', threshold: 350, tag: 'plain' },
