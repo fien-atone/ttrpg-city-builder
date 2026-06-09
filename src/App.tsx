@@ -16,6 +16,7 @@ import { Timeline } from './components/Timeline';
 import { SliceCards } from './components/SliceCards';
 import { ChartView } from './components/ChartView';
 import { EconomyDonut, CompositionDonut } from './components/Donuts';
+import { SectorExplorer } from './components/SectorExplorer';
 import { BuildingList } from './components/BuildingList';
 import { CensusPanel } from './components/CensusPanel';
 import { OutcomePanel } from './components/OutcomePanel';
@@ -76,13 +77,15 @@ export function App() {
         <input ref={fileRef} type="file" accept="application/json" hidden onChange={onFile} />
 
         <Timeline years={sim.years} value={selectedYear} onChange={setSelectedYear} />
-        <SliceCards point={point} peak={sim.peak} />
+        <SliceCards point={point} />
         <ChartView sim={sim} selectedYear={selectedYear} />
 
         <div className="donut-row">
           <EconomyDonut point={point} />
           <CompositionDonut point={point} />
         </div>
+
+        <SectorExplorer point={point} census={census} />
 
         <div className="grid2">
           <CensusPanel census={census} point={point} />

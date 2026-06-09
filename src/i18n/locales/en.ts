@@ -260,6 +260,21 @@ export const en = {
     economyTitle: 'Economy by sector',
     compositionTitle: 'Population composition',
   },
+  cardHints: {
+    population: 'Residents at the selected year',
+    growth: 'Annual change, smoothed over the last 5 years',
+    capacity: 'How many people the land, water and imports can feed (K) · and how full that ceiling is',
+    development: 'Accumulated infrastructure — roads, walls, workshops. Built by funding and prosperity, burned by raids and fires',
+    prosperity: 'Output per capita. ~1.0 is subsistence; trade and crafts push it up, taxes pull it down',
+    funding: 'Outside support this year: investment + subsidy − tax drain',
+  },
+  sectorExplorer: {
+    title: 'Sector breakdown',
+    share: 'Share of economy',
+    workers: 'Working in it',
+    knowhow: 'Know-how',
+    empty: 'nothing yet',
+  },
   census: {
     title: 'Census · year slice',
     foodTitle: 'Food supply',

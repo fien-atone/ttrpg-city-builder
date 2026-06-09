@@ -6,7 +6,8 @@ import { DonutChart, type Segment } from './DonutChart';
 
 export function EconomyDonut({ point }: { point: YearState }) {
   const { t } = useI18n();
-  const segments: Segment[] = SECTORS.map((s: Sector) => ({
+  // hide sub-0.5% slivers so the chart shows what actually exists here
+  const segments: Segment[] = SECTORS.filter((s) => point.sectors[s] >= 0.005).map((s: Sector) => ({
     key: s,
     label: t(`sectors.${s}`),
     value: point.sectors[s],
